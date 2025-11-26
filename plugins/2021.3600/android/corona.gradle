@@ -1,9 +1,0 @@
-repositories {
-    google()
-    mavenCentral()
-    maven { url "https://cboost.jfrog.io/artifactory/chartboost-ads/" }
-}
-
-dependencies {
-    implementation 'com.applovin.mediation:chartboost-adapter:9.10.1.0'
-}
