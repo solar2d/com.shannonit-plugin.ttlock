@@ -1,6 +1,6 @@
 local Library = require "CoronaLibrary"
 
-local ttlock = Library:new{ name='plugin.ttlock', publisherId='com.ttlock' }
+local ttlock = Library:new{ name='plugin.ttlock', publisherId='com.shannonit' }
 
 ttlock.setLogLevel = function()
 	print( 'setLogLevel invoked.' )
