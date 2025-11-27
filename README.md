@@ -1,4 +1,4 @@
-Sources for the plugin plugin.hcModule.
+Sources for the plugin plugin.shannonit.
 
 Add following to your build.settings to use:
 
