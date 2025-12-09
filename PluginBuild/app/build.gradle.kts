@@ -10,6 +10,9 @@ android {
         minSdk = 21
         targetSdk = 33
     }
+    packagingOptions {
+        exclude("com/naef/jnlua/**")
+    }
 
     buildTypes {
         release {
