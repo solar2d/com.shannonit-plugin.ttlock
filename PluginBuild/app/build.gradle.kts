@@ -47,10 +47,10 @@ repositories {
 dependencies {
     // Include TTLock SDK
     implementation(files("libs/ttlock.jar")) // replace with .aar if needed
-
+    
     // Include any other JARs in libs folder
-    //implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     // LuaJ / Corona classes for compilation only (won't be packaged)
-    api(files("libs/jnlua.jar"))
+    // compileOnly(files("libs/jnlua.jar"))
 }
