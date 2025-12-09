@@ -52,5 +52,5 @@ dependencies {
     //implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     // LuaJ / Corona classes for compilation only (won't be packaged)
-    compileOnly(files("libs/jnlua.jar"))
+    api(files("libs/jnlua.jar"))
 }
