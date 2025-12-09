@@ -9,3 +9,11 @@ Add following to your build.settings to use:
         },
     },
 }
+
+
+https://repo1.maven.org/maven2/com/ttlock/ttlock/3.1.9/
+
+inside the app folder i.e. app/
+gradle wrapper --gradle-version 9.2.1
+gradle init
+.\gradlew assembleRelease
