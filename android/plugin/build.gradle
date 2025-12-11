@@ -63,44 +63,56 @@ dependencies {
 }
 
 
+
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 
 def providerId = 'com.solar2d'
-def solar2DVersion = '2015.2539' // <- make this variable
+def solar2DVersion = '2015.2539' 
 def pluginNamespace = android.namespace
 
 // -------------------------
-// Task 1: Extract classes.jar and rename it
+// Task 1: Build JAR from compileReleaseJavaWithJavac
 // -------------------------
-tasks.register("extractPluginJar") {
-    group "Solar2Dev"
-    dependsOn "assembleRelease"
+tasks.register("buildPluginJar", Jar) {
+    group = "Solar2Dev"
+    dependsOn "compileReleaseJavaWithJavac"
+
+    archiveBaseName.set("plugin.ttlock")
+    destinationDirectory.set(file("$buildDir/outputs"))
+
+    from("$buildDir/intermediates/javac/release/compileReleaseJavaWithJavac") {
+        include '**/*.class'
+
+        // Adjust path to start from 'plugin' or 'androidx'
+        eachFile { fileCopyDetails ->
+            def segments = fileCopyDetails.relativePath.segments as List
+            def startIndex = segments.findIndexOf { it == "plugin" || it == "androidx" }
+
+            if (startIndex != -1) {
+                fileCopyDetails.relativePath = new RelativePath(true, *segments[startIndex..-1])
+            } else {
+                // Exclude anything else
+                fileCopyDetails.exclude()
+            }
+        }
+
+        includeEmptyDirs = false
+    }
 
     doLast {
-        def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
-        if (!aarFile.exists()) {
-            throw new GradleException("AAR file not found: $aarFile")
-        }
-
-        copy {
-            from(zipTree(aarFile)) {
-                include 'classes.jar'
-                rename 'classes.jar', "${pluginNamespace}.jar"
-            }
-            into "$buildDir/outputs/"
-        }
-
-        println "== Extracted ${pluginNamespace}.jar from AAR =="
+        println "== Built plugin.ttlock.jar starting at plugin/... and including androidx if present =="
     }
 }
+
+
 
 // -------------------------
 // Task 2: Deploy to local Solar2D repo + plugins folder
 // -------------------------
 tasks.register("deployToLocalSolar2DRepo", Tar) {
     group "Solar2Dev"
-    dependsOn "extractPluginJar"
+    dependsOn "buildPluginJar"
 
     compression = Compression.GZIP
     archiveFileName = "data.tgz"
@@ -110,7 +122,7 @@ tasks.register("deployToLocalSolar2DRepo", Tar) {
     def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
     
     // Additional folder (plugins/2015.2539/android) relative to project root
-    def additionalPath = file("../../plugins/$solar2DVersion/android")
+    def additionalPath = file("$projectDir/../../plugins/$solar2DVersion/android")
 
     destinationDirectory = solar2DPath
 
