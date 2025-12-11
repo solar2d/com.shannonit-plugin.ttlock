@@ -63,55 +63,72 @@ dependencies {
 }
 
 
-def buildDirectory = layout.buildDirectory.get().asFile
-
-tasks.register("extractPluginJar") {
-    group "Solar2Dev"
-    dependsOn assembleRelease
-    doLast {
-        copy {
-            from {
-                zipTree("$buildDirectory/outputs/aar/${project.name}-release.aar").matching {
-                    include 'classes.jar'
-                }.singleFile
-            }
-            into "$buildDirectory/outputs/"
-            String packageName = android.namespace
-            rename "classes.jar", "${packageName}.jar"
-        }
-    }
-}
-
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 
 def providerId = 'com.solar2d'
-tasks.register("deployToLocalSolar2DRepo", Tar) {
-    logger.lifecycle("Remove folder when done testing!")
-    group "Solar2Dev"
-    dependsOn ":plugin:assembleRelease"
+def solar2DVersion = '2015.2539' // <- make this variable
+def pluginNamespace = android.namespace
 
-    String packageName = android.namespace
+// -------------------------
+// Task 1: Extract classes.jar and rename it
+// -------------------------
+tasks.register("extractPluginJar") {
+    group "Solar2Dev"
+    dependsOn "assembleRelease"
+
+    doLast {
+        def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
+        if (!aarFile.exists()) {
+            throw new GradleException("AAR file not found: $aarFile")
+        }
+
+        copy {
+            from(zipTree(aarFile)) {
+                include 'classes.jar'
+                rename 'classes.jar', "${pluginNamespace}.jar"
+            }
+            into "$buildDir/outputs/"
+        }
+
+        println "== Extracted ${pluginNamespace}.jar from AAR =="
+    }
+}
+
+// -------------------------
+// Task 2: Deploy to local Solar2D repo + plugins folder
+// -------------------------
+tasks.register("deployToLocalSolar2DRepo", Tar) {
+    group "Solar2Dev"
+    dependsOn "extractPluginJar"
+
     compression = Compression.GZIP
     archiveFileName = "data.tgz"
 
+    // Local Solar2D plugin path
     def rootS2DP = System.env.APPDATA ?: System.env.HOME
-    def dst = file("$rootS2DP/Solar2DPlugins/$providerId/$packageName/android")
-    destinationDirectory = dst
+    def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
+    
+    // Additional folder (plugins/2015.2539/android) relative to project root
+    def additionalPath = file("../../plugins/$solar2DVersion/android")
+
+    destinationDirectory = solar2DPath
 
     into("/") {
-        from("$buildDir/outputs/aar") {
-            include("${project.name}-release.aar")
+        from("$buildDir/outputs") {
+            include "${pluginNamespace}.jar"
         }
     }
 
     doLast {
-        logger.lifecycle("== Plugin deployed to $dst ==")
-        logger.lifecycle("Remove folder when done testing!")
+        // Copy JAR to the additional folder as well
+        copy {
+            from("$buildDir/outputs/${pluginNamespace}.jar")
+            into additionalPath
+        }
+
+        println "== Plugin deployed to $solar2DPath =="
+        println "== Plugin also copied to $additionalPath =="
+        println "Remove folders when done testing!"
     }
 }
-
-
-
-
-
