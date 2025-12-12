@@ -12,7 +12,7 @@ android {
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+
     }
     
 
@@ -44,7 +44,7 @@ android {
 dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     // implementation(name: 'jnlua-1.0.4', ext: 'jar')
-    implementation(name: 'Corona', ext: 'aar')
+    implementation ':Corona@aar'
     // implementation "androidx.annotation:annotation:1.6.0"
 
     implementation 'androidx.appcompat:appcompat:1.0.0'
@@ -62,90 +62,45 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.4.0'
 }
 
-
-
-import org.gradle.api.tasks.bundling.Compression
-import org.gradle.api.tasks.bundling.Tar
-
 def providerId = 'com.solar2d'
-def solar2DVersion = '2015.2539' 
+def solar2DVersion = '2020.2630'
 def pluginNamespace = android.namespace
 
-tasks.register("buildPluginJarFromAAR", Jar) {
+tasks.register("copyPluginAAR", Copy) {
+    dependsOn assembleRelease
     group = "Solar2Dev"
+    description = "Copy plugin AAR to local Solar2D plugin folders"
 
-    // Where the AAR exists
-    def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
+    // Path to the existing AAR
+    def aarFile = file("$buildDir/outputs/aar/plugin-release.aar")
 
-    // Extraction working folder
-    def tmpDir = file("$buildDir/tmp/pluginJarWork")
-    def classesDir = file("$tmpDir/allClasses")
+    // Local Solar2D plugin path (APPDATA on Windows, HOME on Unix)
+    def rootS2DP = System.env.APPDATA ?: System.env.HOME
+    def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
 
-    // Output JAR name
-    archiveBaseName.set(pluginNamespace)
-    destinationDirectory.set(file("$buildDir/outputs"))
-
-    dependsOn "assembleRelease"
+    // Additional folder: plugins/<version>/android
+    def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
 
     doFirst {
-        delete tmpDir
-        tmpDir.mkdirs()
-        classesDir.mkdirs()
-
-        // ---- Extract classes.jar from AAR ----
-        copy {
-            from(zipTree(aarFile))
-            include "classes.jar"
-            into tmpDir
+        if (!aarFile.exists()) {
+            throw new GradleException("AAR file does not exist: $aarFile")
         }
-
-        // ---- Unzip classes.jar into allClasses ----
-        copy {
-            from(zipTree("$tmpDir/classes.jar"))
-            into classesDir
-        }
+        println "== Copying plugin AAR: $aarFile =="
     }
 
-    // ---- Build JAR from extracted classes ----
-    from(classesDir) {
-        include "**/*.class"
+    // Copy to Solar2D local repository
+    from(aarFile)
+    into(solar2DPath)
 
-        eachFile { f ->
-            def seg = f.relativePath.segments as List
-            def idx = seg.indexOf("plugin")
-            if (idx != -1) {
-                f.relativePath = new RelativePath(true, *seg[idx..-1])
-            } else {
-                f.exclude()
-            }
-        }
-        includeEmptyDirs = false
-    }
-
+    // Copy to plugins/<version>/android after the first copy
     doLast {
-        def jarPath = "$buildDir/outputs/${pluginNamespace}.jar"
-
-        // Local Solar2D plugin path
-        def rootS2DP = System.env.APPDATA ?: System.env.HOME
-        def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
-
-        // Additional folder: plugins/<version>/android
-        def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
-
-        // Copy to Solar2D local repository
         copy {
-            from(jarPath)
-            into solar2DPath
+            from(aarFile)
+            into(additionalPath)
         }
 
-        // Copy to plugins/<version>/android
-        copy {
-            from(jarPath)
-            into additionalPath
-        }
-
-        println "== JAR built from AAR =="
-        println "== Copied to: $solar2DPath =="
-        println "== Also copied to: $additionalPath =="
+        println "== Plugin AAR copied to local Solar2D path: $solar2DPath =="
+        println "== Plugin AAR also copied to: $additionalPath =="
     }
 }
+

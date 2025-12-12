@@ -1,0 +1,3 @@
+dependencies {
+    implementation 'com.ttlock:ttlock:3.5.4'
+}
