@@ -71,48 +71,13 @@ def providerId = 'com.solar2d'
 def solar2DVersion = '2015.2539' 
 def pluginNamespace = android.namespace
 
-// -------------------------
-// Task 1: Build JAR from compileReleaseJavaWithJavac
-// -------------------------
-tasks.register("buildPluginJar", Jar) {
-    group = "Solar2Dev"
-    dependsOn "compileReleaseJavaWithJavac"
-
-    archiveBaseName.set("plugin.ttlock")
-    destinationDirectory.set(file("$buildDir/outputs"))
-
-    from("$buildDir/intermediates/javac/release/compileReleaseJavaWithJavac") {
-        include '**/*.class'
-
-        // Adjust path to start from 'plugin' or 'androidx'
-        eachFile { fileCopyDetails ->
-            def segments = fileCopyDetails.relativePath.segments as List
-            def startIndex = segments.findIndexOf { it == "plugin" || it == "androidx" }
-
-            if (startIndex != -1) {
-                fileCopyDetails.relativePath = new RelativePath(true, *segments[startIndex..-1])
-            } else {
-                // Exclude anything else
-                fileCopyDetails.exclude()
-            }
-        }
-
-        includeEmptyDirs = false
-    }
-
-    doLast {
-        println "== Built plugin.ttlock.jar starting at plugin/... and including androidx if present =="
-    }
-}
-
 
 
 // -------------------------
-// Task 2: Deploy to local Solar2D repo + plugins folder
+// Task 1: Deploy AAR to local Solar2D repo + plugins folder
 // -------------------------
 tasks.register("deployToLocalSolar2DRepo", Tar) {
     group "Solar2Dev"
-    dependsOn "buildPluginJar"
 
     compression = Compression.GZIP
     archiveFileName = "data.tgz"
@@ -127,15 +92,17 @@ tasks.register("deployToLocalSolar2DRepo", Tar) {
     destinationDirectory = solar2DPath
 
     into("/") {
-        from("$buildDir/outputs") {
-            include "${pluginNamespace}.jar"
+        from("$buildDir/outputs/aar") {
+            include "${project.name}-release.aar"
+            rename "${project.name}-release.aar", "${pluginNamespace}.aar"
         }
     }
 
     doLast {
-        // Copy JAR to the additional folder as well
+        // Copy AAR to the additional folder as well
         copy {
-            from("$buildDir/outputs/${pluginNamespace}.jar")
+            from("$buildDir/outputs/aar/${project.name}-release.aar")
+            rename { "${pluginNamespace}.aar" }
             into additionalPath
         }
 

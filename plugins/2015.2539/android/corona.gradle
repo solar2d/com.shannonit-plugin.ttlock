@@ -8,14 +8,6 @@ android {
 // Save minSdkVersion in ext if needed by Solar2D build scripts
 ext["minSdkVersion"] = Math.max(ext.find("minSdkVersion") ?: 15, 23)
 
-repositories {
-    google()
-    mavenCentral()
-    flatDir {
-        dirs 'libs'
-    }
-}
-
 dependencies {
     // Core dependencies for the plugin
     implementation 'androidx.appcompat:appcompat:1.2.0'
