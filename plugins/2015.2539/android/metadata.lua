@@ -1,7 +1,7 @@
 -- metadata.lua
 return {
     plugin = {
-        format = "jar",        -- or "aar" if using an Android library
+        format = "aar",        -- or "aar" if using an Android library
         publisherId = "com.shannonit",
         name = "plugin.ttlock",
         version = "1.0.0",

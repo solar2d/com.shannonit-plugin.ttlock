@@ -73,41 +73,84 @@ def pluginNamespace = android.namespace
 
 
 
-// -------------------------
-// Task 1: Deploy AAR to local Solar2D repo + plugins folder
-// -------------------------
-tasks.register("deployToLocalSolar2DRepo", Tar) {
-    group "Solar2Dev"
+tasks.register("buildPluginJarFromAAR", Jar) {
+    group = "Solar2Dev"
 
-    compression = Compression.GZIP
-    archiveFileName = "data.tgz"
+    // Where the AAR exists
+    def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
 
-    // Local Solar2D plugin path
-    def rootS2DP = System.env.APPDATA ?: System.env.HOME
-    def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
-    
-    // Additional folder (plugins/2015.2539/android) relative to project root
-    def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
+    // Extraction working folder
+    def tmpDir = file("$buildDir/tmp/pluginJarWork")
+    def classesDir = file("$tmpDir/allClasses")
 
-    destinationDirectory = solar2DPath
+    // Output JAR name
+    archiveBaseName.set(pluginNamespace)
+    destinationDirectory.set(file("$buildDir/outputs"))
 
-    into("/") {
-        from("$buildDir/outputs/aar") {
-            include "${project.name}-release.aar"
-            rename "${project.name}-release.aar", "${pluginNamespace}.aar"
+    dependsOn "assembleRelease"
+
+    doFirst {
+        delete tmpDir
+        tmpDir.mkdirs()
+        classesDir.mkdirs()
+
+        // ---- Extract classes.jar from AAR ----
+        copy {
+            from(zipTree(aarFile))
+            include "classes.jar"
+            into tmpDir
+        }
+
+        // ---- Unzip classes.jar into allClasses ----
+        copy {
+            from(zipTree("$tmpDir/classes.jar"))
+            into classesDir
         }
     }
 
+    from(classesDir) {
+        include "**/*.class"
+
+        // Adjust path to start from 'plugin' or 'androidx'
+        eachFile { fileCopyDetails ->
+            def segments = fileCopyDetails.relativePath.segments as List
+            def startIndex = segments.findIndexOf { it == "plugin" || it == "androidx" }
+
+            if (startIndex != -1) {
+                fileCopyDetails.relativePath = new RelativePath(true, *segments[startIndex..-1])
+            } else {
+                // Exclude anything else
+                fileCopyDetails.exclude()
+            }
+        }
+        includeEmptyDirs = false
+    }
+
+
     doLast {
-        // Copy AAR to the additional folder as well
+        def jarPath = "$buildDir/outputs/${pluginNamespace}.jar"
+
+        // Local Solar2D plugin path
+        def rootS2DP = System.env.APPDATA ?: System.env.HOME
+        def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
+
+        // Additional folder: plugins/<version>/android
+        def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
+
+        // Copy to Solar2D local repository
         copy {
-            from("$buildDir/outputs/aar/${project.name}-release.aar")
-            rename { "${pluginNamespace}.aar" }
+            from(jarPath)
+            into solar2DPath
+        }
+
+        // Copy to plugins/<version>/android
+        copy {
+            from(jarPath)
             into additionalPath
         }
 
-        println "== Plugin deployed to $solar2DPath =="
-        println "== Plugin also copied to $additionalPath =="
-        println "Remove folders when done testing!"
+        println "== JAR built from AAR =="
+        println "== Copied to: $solar2DPath =="
+        println "== Also copied to: $additionalPath =="
     }
 }
