@@ -8,6 +8,7 @@ return {
         minSdkVersion = 23,    -- minimum Android SDK
         maxSdkVersion = 34,    -- optional
         description = "TTLock Bluetooth lock integration for Solar2D",
-        license = "MIT",       -- optional
+        license = "CER",       -- optional
+        manifest = { "plugin.ttlock" },
     }
 }
