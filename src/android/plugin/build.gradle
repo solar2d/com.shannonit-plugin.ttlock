@@ -108,24 +108,21 @@ tasks.register("buildPluginJarFromAAR", Jar) {
         }
     }
 
+    // ---- Build JAR from extracted classes ----
     from(classesDir) {
         include "**/*.class"
 
-        // Adjust path to start from 'plugin' or 'androidx'
-        eachFile { fileCopyDetails ->
-            def segments = fileCopyDetails.relativePath.segments as List
-            def startIndex = segments.findIndexOf { it == "plugin" || it == "androidx" }
-
-            if (startIndex != -1) {
-                fileCopyDetails.relativePath = new RelativePath(true, *segments[startIndex..-1])
+        eachFile { f ->
+            def seg = f.relativePath.segments as List
+            def idx = seg.indexOf("plugin")
+            if (idx != -1) {
+                f.relativePath = new RelativePath(true, *seg[idx..-1])
             } else {
-                // Exclude anything else
-                fileCopyDetails.exclude()
+                f.exclude()
             }
         }
         includeEmptyDirs = false
     }
-
 
     doLast {
         def jarPath = "$buildDir/outputs/${pluginNamespace}.jar"
