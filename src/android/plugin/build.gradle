@@ -71,7 +71,6 @@ def providerId = 'com.solar2d'
 def solar2DVersion = '2015.2539' 
 def pluginNamespace = android.namespace
 
-
 tasks.register("buildPluginJarFromAAR", Jar) {
     group = "Solar2Dev"
 
