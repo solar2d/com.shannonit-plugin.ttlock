@@ -7,14 +7,16 @@ import com.ansca.corona.CoronaRuntimeTaskDispatcher;
 
 public class LuaLoader {
 
-    private final LuaStub stub;
+    private final LuaTTLock luaTTLock;
 
     public LuaLoader(Context context, CoronaRuntime runtime) {
         CoronaRuntimeTaskDispatcher dispatcher =
                 new CoronaRuntimeTaskDispatcher(runtime);
 
-        stub = new LuaStub(dispatcher);
+        // Create the LuaTTLock stub instance
+        luaTTLock = new LuaTTLock(dispatcher);
 
-        System.out.println("LuaLoader: Stub plugin loaded");
+        // Log to confirm the loader is invoked
+        System.out.println("LuaLoader: LuaTTLock stub loaded");
     }
 }
