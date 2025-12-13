@@ -1,5 +1,3 @@
-
-
 plugins {
     id 'com.android.library'
 }
@@ -11,15 +9,7 @@ android {
         minSdkVersion 23
         targetSdkVersion 34
         versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-    }
-    
-
-    buildFeatures {
-        dataBinding true
-        viewBinding true
-        buildConfig true
+        versionName "1.0" 
     }
 
     compileOptions {
@@ -45,6 +35,7 @@ dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
+    compileOnly files('libs/jnlua-1.0.4.jar')
     // implementation "androidx.annotation:annotation:1.6.0"
 
     implementation 'androidx.appcompat:appcompat:1.0.0'
@@ -71,18 +62,19 @@ def providerId = 'com.solar2d'
 def solar2DVersion = '2020.2630' 
 def pluginNamespace = android.namespace
 
+
 tasks.register("buildPluginJarFromAAR", Jar) {
     group = "Solar2Dev"
 
-    // AAR produced by Android build
-    def aarFile = file("$buildDir/outputs/aar/plugin-release.aar")
+    // Where the AAR exists
+    def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
 
-    // Temp extraction dir
+    // Extraction working folder
     def tmpDir = file("$buildDir/tmp/pluginJarWork")
     def classesDir = file("$tmpDir/allClasses")
 
-    // Output JAR
-    archiveBaseName.set("plugin.ttlock")
+    // Output JAR name
+    archiveBaseName.set(pluginNamespace)
     destinationDirectory.set(file("$buildDir/outputs"))
 
     dependsOn "assembleRelease"
@@ -92,28 +84,101 @@ tasks.register("buildPluginJarFromAAR", Jar) {
         tmpDir.mkdirs()
         classesDir.mkdirs()
 
-        // Extract classes.jar from AAR
+        // ---- Extract classes.jar from AAR ----
         copy {
             from(zipTree(aarFile))
             include "classes.jar"
             into tmpDir
         }
 
-        // Unzip classes.jar
+        // ---- Unzip classes.jar into allClasses ----
         copy {
             from(zipTree("$tmpDir/classes.jar"))
             into classesDir
         }
     }
 
-    // Include ONLY plugin/ttlock compiled classes
+    // ---- Build JAR from extracted classes ----
     from(classesDir) {
-        include "plugin/ttlock/**/*.class"
+        include "**/*.class"
+
+        eachFile { f ->
+            def seg = f.relativePath.segments as List
+            def idx = seg.indexOf("plugin")
+            if (idx != -1) {
+                f.relativePath = new RelativePath(true, *seg[idx..-1])
+            } else {
+                f.exclude()
+            }
+        }
         includeEmptyDirs = false
     }
 
+
     doLast {
-        println "== Plugin JAR built =="
-        println "== Output: ${archiveFile.get().asFile} =="
+        def jarPath = "$buildDir/outputs/${pluginNamespace}.jar"
+
+        // Local Solar2D plugin path
+        def rootS2DP = System.env.APPDATA ?: System.env.HOME
+        def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
+
+        // Additional folder: plugins/<version>/android
+        def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
+
+        // Copy to Solar2D local repository
+        copy {
+            from(jarPath)
+            into solar2DPath
+        }
+
+        // Copy to plugins/<version>/android
+        copy {
+            from(jarPath)
+            into additionalPath
+        }
+
+        println "== JAR built from AAR =="
+        println "== Copied to: $solar2DPath =="
+        println "== Also copied to: $additionalPath =="
     }
 }
+
+import org.gradle.api.tasks.bundling.Tar
+import org.gradle.api.tasks.bundling.Compression
+
+tasks.register("preparePluginPackage") {
+    group = "Solar2Dev"
+
+    def jarPath = file("$buildDir/outputs/${pluginNamespace}.jar")
+    def packageRoot = file("$projectDir/../../../plugins/$solar2DVersion")
+
+    dependsOn "buildPluginJarFromAAR"
+
+    doLast {
+        // Ensure android folder exists
+        def androidDir = new File(packageRoot, "android")
+        androidDir.mkdirs()
+
+        // Copy JAR
+        copy {
+            from jarPath
+            into androidDir
+        }
+
+        println "== Plugin JAR copied to: $androidDir =="
+
+        // Build android.tgz
+        ant.tar(
+            destfile: new File(packageRoot, "android.tgz"),
+            compression: "gzip"
+        ) {
+            tarfileset(
+                dir: androidDir,
+                prefix: "android"
+            )
+        }
+
+        println "== android.tgz created at: $packageRoot/android.tgz =="
+    }
+}
+
