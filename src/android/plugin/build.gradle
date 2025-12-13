@@ -71,19 +71,18 @@ def providerId = 'com.solar2d'
 def solar2DVersion = '2020.2630' 
 def pluginNamespace = android.namespace
 
-
 tasks.register("buildPluginJarFromAAR", Jar) {
     group = "Solar2Dev"
 
-    // Where the AAR exists
-    def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
+    // AAR produced by Android build
+    def aarFile = file("$buildDir/outputs/aar/plugin-release.aar")
 
-    // Extraction working folder
+    // Temp extraction dir
     def tmpDir = file("$buildDir/tmp/pluginJarWork")
     def classesDir = file("$tmpDir/allClasses")
 
-    // Output JAR name
-    archiveBaseName.set(pluginNamespace)
+    // Output JAR
+    archiveBaseName.set("plugin.ttlock")
     destinationDirectory.set(file("$buildDir/outputs"))
 
     dependsOn "assembleRelease"
@@ -93,60 +92,28 @@ tasks.register("buildPluginJarFromAAR", Jar) {
         tmpDir.mkdirs()
         classesDir.mkdirs()
 
-        // ---- Extract classes.jar from AAR ----
+        // Extract classes.jar from AAR
         copy {
             from(zipTree(aarFile))
             include "classes.jar"
             into tmpDir
         }
 
-        // ---- Unzip classes.jar into allClasses ----
+        // Unzip classes.jar
         copy {
             from(zipTree("$tmpDir/classes.jar"))
             into classesDir
         }
     }
 
-    // ---- Build JAR from extracted classes ----
+    // Include ONLY plugin/ttlock compiled classes
     from(classesDir) {
-        include "**/*.class"
-
-        eachFile { f ->
-            def seg = f.relativePath.segments as List
-            def idx = seg.indexOf("plugin")
-            if (idx != -1) {
-                f.relativePath = new RelativePath(true, *seg[idx..-1])
-            } else {
-                f.exclude()
-            }
-        }
+        include "plugin/ttlock/**/*.class"
         includeEmptyDirs = false
     }
 
     doLast {
-        def jarPath = "$buildDir/outputs/${pluginNamespace}.jar"
-
-        // Local Solar2D plugin path
-        def rootS2DP = System.env.APPDATA ?: System.env.HOME
-        def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
-
-        // Additional folder: plugins/<version>/android
-        def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
-
-        // Copy to Solar2D local repository
-        copy {
-            from(jarPath)
-            into solar2DPath
-        }
-
-        // Copy to plugins/<version>/android
-        copy {
-            from(jarPath)
-            into additionalPath
-        }
-
-        println "== JAR built from AAR =="
-        println "== Copied to: $solar2DPath =="
-        println "== Also copied to: $additionalPath =="
+        println "== Plugin JAR built =="
+        println "== Output: ${archiveFile.get().asFile} =="
     }
 }
