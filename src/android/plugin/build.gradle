@@ -53,132 +53,63 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.4.0'
 }
 
-
-
-import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
+import org.gradle.api.tasks.bundling.Compression
 
-def providerId = 'com.solar2d'
-def solar2DVersion = '2020.2630' 
-def pluginNamespace = android.namespace
+// ---- Variables ----
+def pluginId = android.namespace
+def solar2DVersion = "2025.3721"
 
+def aarFile = file("$buildDir/outputs/aar/$project.name-release.aar")
+def includeDir = file("$projectDir/../../package-plugin")
+def outputDir = file("$projectDir/../../../plugins/$solar2DVersion/android")
+def tmpDir = file("$buildDir/tmp/pluginPackage")
 
-tasks.register("buildPluginJarFromAAR", Jar) {
-    group = "Solar2Dev"
-
-    // Where the AAR exists
-    def aarFile = file("$buildDir/outputs/aar/${project.name}-release.aar")
-
-    // Extraction working folder
-    def tmpDir = file("$buildDir/tmp/pluginJarWork")
-    def classesDir = file("$tmpDir/allClasses")
-
-    // Output JAR name
-    archiveBaseName.set(pluginNamespace)
-    destinationDirectory.set(file("$buildDir/outputs"))
-
+// ---- Task: Prepare Plugin Files ----
+tasks.register("preparePluginFiles", Copy) {
     dependsOn "assembleRelease"
 
+    // Clean tmpDir before copying
     doFirst {
         delete tmpDir
         tmpDir.mkdirs()
-        classesDir.mkdirs()
-
-        // ---- Extract classes.jar from AAR ----
-        copy {
-            from(zipTree(aarFile))
-            include "classes.jar"
-            into tmpDir
-        }
-
-        // ---- Unzip classes.jar into allClasses ----
-        copy {
-            from(zipTree("$tmpDir/classes.jar"))
-            into classesDir
-        }
     }
 
-    // ---- Build JAR from extracted classes ----
-    from(classesDir) {
-        include "**/*.class"
+    // Copy everything from includeDir
+    from(includeDir)
+    into(tmpDir)
 
-        eachFile { f ->
-            def seg = f.relativePath.segments as List
-            def idx = seg.indexOf("plugin")
-            if (idx != -1) {
-                f.relativePath = new RelativePath(true, *seg[idx..-1])
-            } else {
-                f.exclude()
-            }
-        }
-        includeEmptyDirs = false
+    // Copy & rename AAR into tmpDir
+    from(aarFile) {
+        rename { "${pluginId}.aar" }
     }
-
+    into(tmpDir)
 
     doLast {
-        def jarPath = "$buildDir/outputs/${pluginNamespace}.jar"
-
-        // Local Solar2D plugin path
-        def rootS2DP = System.env.APPDATA ?: System.env.HOME
-        def solar2DPath = file("$rootS2DP/Solar2DPlugins/$providerId/$pluginNamespace/android")
-
-        // Additional folder: plugins/<version>/android
-        def additionalPath = file("$projectDir/../../../plugins/$solar2DVersion/android")
-
-        // Copy to Solar2D local repository
-        copy {
-            from(jarPath)
-            into solar2DPath
-        }
-
-        // Copy to plugins/<version>/android
-        copy {
-            from(jarPath)
-            into additionalPath
-        }
-
-        println "== JAR built from AAR =="
-        println "== Copied to: $solar2DPath =="
-        println "== Also copied to: $additionalPath =="
+        println "Copied files to tmpDir:"
+        fileTree(tmpDir).visit { println it.relativePath }
     }
 }
 
-import org.gradle.api.tasks.bundling.Tar
-import org.gradle.api.tasks.bundling.Compression
-
-tasks.register("preparePluginPackage") {
+// ---- Task: Package into TGZ ----
+tasks.register("preparePluginPackage", Tar) {
     group = "Solar2Dev"
+    description = "Build Solar2D plugin package (AAR + data.tgz)"
 
-    def jarPath = file("$buildDir/outputs/${pluginNamespace}.jar")
-    def packageRoot = file("$projectDir/../../../plugins/$solar2DVersion")
+    dependsOn "preparePluginFiles"
 
-    dependsOn "buildPluginJarFromAAR"
+    archiveFileName.set("data.tgz")
+    destinationDirectory.set(outputDir)
+    compression = Compression.GZIP
+
+    // Include everything from tmpDir
+    from { tmpDir } {
+        include "**/*"
+    }
 
     doLast {
-        // Ensure android folder exists
-        def androidDir = new File(packageRoot, "android")
-        androidDir.mkdirs()
-
-        // Copy JAR
-        copy {
-            from jarPath
-            into androidDir
-        }
-
-        println "== Plugin JAR copied to: $androidDir =="
-
-        // Build android.tgz
-        ant.tar(
-            destfile: new File(packageRoot, "android.tgz"),
-            compression: "gzip"
-        ) {
-            tarfileset(
-                dir: androidDir,
-                prefix: "android"
-            )
-        }
-
-        println "== android.tgz created at: $packageRoot/android.tgz =="
+        println "== Solar2D plugin package created =="
+        println "Plugin: $pluginId"
+        println "Output: $outputDir/data.tgz"
     }
 }
-

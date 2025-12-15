@@ -1,18 +1,12 @@
-settings =
-{
-    plugins =
-    {
-        ["plugin.ttlock"] =
-        {
+settings = {
+    plugins = {
+        ["plugin.ttlock"] = {
             publisherId = "com.shannonit",
-            url = "file:///D:/repos/com.shannonit-plugin.ttlock/plugins/2020.2630/android.tgz"
         },
     },
 
-    android =
-    {
-        usesPermissions =
-        {
+    android = {
+        usesPermissions = {
             "android.permission.BLUETOOTH",
             "android.permission.BLUETOOTH_ADMIN",
             "android.permission.ACCESS_FINE_LOCATION",

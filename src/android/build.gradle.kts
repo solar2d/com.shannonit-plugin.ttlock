@@ -37,7 +37,7 @@ val lifecycleVersion: String by extra("1.1.1")
 allprojects {
     repositories {
         google()
-
+        jcenter()
         mavenCentral()
 
         // Custom flatDir repository
