@@ -62,20 +62,23 @@ def solar2DVersion = "2025.3721"
 
 def aarFile = file("$buildDir/outputs/aar/$project.name-release.aar")
 def includeDir = file("$projectDir/../../package-plugin")
-def outputDir = file("$projectDir/../../../plugins/$solar2DVersion/android")
-def tmpDir = file("$buildDir/tmp/pluginPackage")
+def pluginsDir = file("$projectDir/../../../plugins/$solar2DVersion/android") // raw files
+def tmpDir = file("$buildDir/tmp/pluginPackage")                             // temp folder
+def tgzOutputDir = file("$buildDir/outputs/pluginPackage")                   // data.tgz output
+
 
 // ---- Task: Prepare Plugin Files ----
 tasks.register("preparePluginFiles", Copy) {
     dependsOn "assembleRelease"
 
-    // Clean tmpDir before copying
+    println "TGZ output: $pluginsDir"
+
     doFirst {
         delete tmpDir
         tmpDir.mkdirs()
     }
 
-    // Copy everything from includeDir
+    // Copy everything from includeDir into tmpDir
     from(includeDir)
     into(tmpDir)
 
@@ -91,7 +94,20 @@ tasks.register("preparePluginFiles", Copy) {
     }
 }
 
-// ---- Task: Package into TGZ ----
+// ---- Task: Copy raw files into plugins/.../android ----
+tasks.register("deployPluginFiles", Copy) {
+    dependsOn "preparePluginFiles"
+
+    from(tmpDir)
+    into(pluginsDir)
+
+    doLast {
+        println "Raw plugin files copied to plugins dir:"
+        fileTree(pluginsDir).visit { println it.relativePath }
+    }
+}
+
+// ---- Task: Package into TGZ (kept in outputs) ----
 tasks.register("preparePluginPackage", Tar) {
     group = "Solar2Dev"
     description = "Build Solar2D plugin package (AAR + data.tgz)"
@@ -99,7 +115,7 @@ tasks.register("preparePluginPackage", Tar) {
     dependsOn "preparePluginFiles"
 
     archiveFileName.set("data.tgz")
-    destinationDirectory.set(outputDir)
+    destinationDirectory.set(tgzOutputDir)
     compression = Compression.GZIP
 
     // Include everything from tmpDir
@@ -110,6 +126,13 @@ tasks.register("preparePluginPackage", Tar) {
     doLast {
         println "== Solar2D plugin package created =="
         println "Plugin: $pluginId"
-        println "Output: $outputDir/data.tgz"
+        println "TGZ output: $tgzOutputDir/data.tgz"
     }
+}
+
+// Optional: high-level task to do everything
+tasks.register("buildPlugin") {
+    group = "Solar2Dev"
+    description = "Prepare plugin files, deploy raw files, and package tgz"
+    dependsOn "preparePluginFiles", "deployPluginFiles", "preparePluginPackage"
 }

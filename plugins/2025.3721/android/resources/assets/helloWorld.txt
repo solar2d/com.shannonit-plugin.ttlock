@@ -1,0 +1,1 @@
+This is just to test if the asses file was loaded inside the apk
