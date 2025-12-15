@@ -13,8 +13,8 @@ android {
     }
 
     compileOptions {
-        targetCompatibility JavaVersion.VERSION_1_8
-        sourceCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
     lintOptions {
         abortOnError false
@@ -70,8 +70,6 @@ def tgzOutputDir = file("$buildDir/outputs/pluginPackage")                   // 
 // ---- Task: Prepare Plugin Files ----
 tasks.register("preparePluginFiles", Copy) {
     dependsOn "assembleRelease"
-
-    println "TGZ output: $pluginsDir"
 
     doFirst {
         delete tmpDir
