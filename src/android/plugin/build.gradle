@@ -82,8 +82,9 @@ tasks.register("preparePluginFiles", Copy) {
 
     // Copy & rename AAR into tmpDir
     from(aarFile) {
-        rename { "${pluginId}.aar" }
+        rename { "${pluginId.replace('.', '-')}.aar" }
     }
+
     into(tmpDir)
 
     doLast {
