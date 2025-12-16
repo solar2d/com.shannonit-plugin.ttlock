@@ -52,7 +52,8 @@ import org.gradle.api.tasks.bundling.Compression
 def pluginId = android.namespace
 def solar2DVersion = "2025.3721"
 
-def aarFile = file("$buildDir/outputs/aar/$project.name-release.aar")
+// def aarFile = file("$buildDir/outputs/aar/$project.name-release.aar")
+def aarFile = file("$buildDir/intermediates/aar_main_jar/release/classes.jar")
 def includeDir = file("$projectDir/../../package-plugin")
 def pluginsDir = file("$projectDir/../../../plugins/$solar2DVersion/android") // raw files
 def tmpDir = file("$buildDir/tmp/pluginPackage")                             // temp folder
@@ -74,7 +75,7 @@ tasks.register("preparePluginFiles", Copy) {
 
     // Copy & rename AAR into tmpDir
     from(aarFile) {
-        rename { "${pluginId.replace('.', '-')}.aar" }
+        rename { "${pluginId.replace('.', '-')}.jar" }
     }
 
     into(tmpDir)
