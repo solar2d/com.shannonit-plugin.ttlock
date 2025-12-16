@@ -4,30 +4,22 @@ plugins {
 
 android {
     namespace "plugin.ttlock"
-    compileSdkVersion 34
+    compileSdkVersion 33
     defaultConfig {
-        minSdkVersion 23
-        targetSdkVersion 34
+        minSdkVersion 15
         versionCode 1
-        versionName "1.0" 
+        versionName "1.0"
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
-    lintOptions {
-        abortOnError false
-        checkReleaseBuilds false
-        // 防止在发布的时候出现因MissingTranslation导致Build Failed!
-        disable 'MissingTranslation'
-    }
     //添加本地仓库，并把libs目录作为仓库地址
-    repositories {
-        flatDir {
-            dirs 'libs'
-        }
-    }
+    // repositories {
+    //     flatDir {
+    //         dirs 'libs'
+    //     }
+    // }
     
 }
 
@@ -35,7 +27,7 @@ dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
-    compileOnly files('libs/jnlua-1.0.4.jar')
+    // compileOnly files('libs/jnlua-1.0.4.jar')
     // implementation "androidx.annotation:annotation:1.6.0"
 
     implementation 'androidx.appcompat:appcompat:1.0.0'
