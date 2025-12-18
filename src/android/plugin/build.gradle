@@ -30,7 +30,7 @@ dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
-    //compileOnly files('libs/ttlock-3.5.4.aar')
+    // compileOnly files('libs/ttlock-3.5.4.aar')
     // implementation "androidx.annotation:annotation:1.6.0"
 
     implementation 'androidx.appcompat:appcompat:1.0.0'
