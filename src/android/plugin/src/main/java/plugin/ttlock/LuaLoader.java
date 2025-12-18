@@ -19,7 +19,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     /** This corresponds to the event name. */
     private static final String EVENT_NAME = "ttlock";
 
-    private TTLockUtils ttlockUtils;
+    TTLockUtils ttlockUtils;
 
     @SuppressWarnings("unused")
     public LuaLoader() {
@@ -31,11 +31,11 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     @Override
     public int invoke(LuaState L) {
         NamedJavaFunction[] luaFunctions = new NamedJavaFunction[]{
-                new StartScanLockWrapper(),
-                new StopScanLockWrapper(),
-                new InitLockWrapper(),
-                new ResetEkeyWrapper(),
-                new ResetLockWrapper()
+                new StartScanLockWrapper(this),
+                new StopScanLockWrapper(this),
+                new InitLockWrapper(this),
+                new ResetEkeyWrapper(this),
+                new ResetLockWrapper(this)
         };
         String libName = L.toString(1);
         L.register(libName, luaFunctions);
@@ -80,7 +80,15 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     // Lua function wrappers
     // ---------------------------
 
-    private class StartScanLockWrapper implements NamedJavaFunction {
+    private static class StartScanLockWrapper implements NamedJavaFunction {
+        private LuaLoader loader;
+        private TTLockUtils ttlockUtils;
+
+        public StartScanLockWrapper(LuaLoader loader) {
+            this.loader = loader;
+            this.ttlockUtils = loader.ttlockUtils;
+        }
+
         @Override public String getName() { return "startScanLock"; }
 
         @Override
@@ -89,22 +97,27 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             ttlockUtils.startScanLock(new ScanLockCallback() {
                 @Override
                 public void onScanLockSuccess(ExtendedBluetoothDevice device) {
-                    dispatchDeviceEvent(device, listener);
+                    loader.dispatchDeviceEvent(device, listener);
                 }
 
                 @Override
                 public void onFail(LockError error) {
-                    dispatchErrorEvent(error, listener);
+                    loader.dispatchErrorEvent(error, listener);
                 }
-
-                // @Override
-                // public void onFinish() { }
             });
             return 0;
         }
     }
 
-    private class StopScanLockWrapper implements NamedJavaFunction {
+    private static class StopScanLockWrapper implements NamedJavaFunction {
+        private LuaLoader loader;
+        private TTLockUtils ttlockUtils;
+
+        public StopScanLockWrapper(LuaLoader loader) {
+            this.loader = loader;
+            this.ttlockUtils = loader.ttlockUtils;
+        }
+
         @Override public String getName() { return "stopScanLock"; }
 
         @Override
@@ -114,13 +127,20 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         }
     }
 
-    private class InitLockWrapper implements NamedJavaFunction {
+    private static class InitLockWrapper implements NamedJavaFunction {
+        private LuaLoader loader;
+        private TTLockUtils ttlockUtils;
+
+        public InitLockWrapper(LuaLoader loader) {
+            this.loader = loader;
+            this.ttlockUtils = loader.ttlockUtils;
+        }
+
         @Override public String getName() { return "initLock"; }
 
         @Override
         public int invoke(final LuaState L) {
             String mac = L.checkString(1);
-            // TODO: ExtendedBluetoothDevice device = ttlockUtils.getDeviceByMac(mac);
             ExtendedBluetoothDevice device;
             final int listener = CoronaLua.newRef(L, 2);
 
@@ -130,7 +150,15 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         }
     }
 
-    private class ResetEkeyWrapper implements NamedJavaFunction {
+    private static class ResetEkeyWrapper implements NamedJavaFunction {
+        private LuaLoader loader;
+        private TTLockUtils ttlockUtils;
+
+        public ResetEkeyWrapper(LuaLoader loader) {
+            this.loader = loader;
+            this.ttlockUtils = loader.ttlockUtils;
+        }
+
         @Override public String getName() { return "resetEkey"; }
 
         @Override
@@ -145,7 +173,15 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         }
     }
 
-    private class ResetLockWrapper implements NamedJavaFunction {
+    private static class ResetLockWrapper implements NamedJavaFunction {
+        private LuaLoader loader;
+        private TTLockUtils ttlockUtils;
+
+        public ResetLockWrapper(LuaLoader loader) {
+            this.loader = loader;
+            this.ttlockUtils = loader.ttlockUtils;
+        }
+
         @Override public String getName() { return "resetLock"; }
 
         @Override

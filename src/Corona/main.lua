@@ -28,21 +28,18 @@ local function log(msg)
     output.text = output.text .. msg .. "\n"
 end
 
--- Event listener for TTLock events
+-- Callback function to handle TTLock plugin events
 local function ttlockListener(event)
-    if event.mac and event.name then
-        log("Found lock: " .. event.name .. " [" .. event.mac .. "]")
+    if event.mac then
+        log("Found lock: " .. event.name .. " (" .. event.mac .. ")")
     elseif event.status then
-        log("Operation status: " .. event.status)
+        log("Status: " .. event.status)
     elseif event.error then
         log("Error: " .. event.error)
-    elseif event.message then
-        log("Message: " .. event.message)
+    else
+        log("Event: " .. tostring(event))
     end
 end
-
--- Initialize the plugin
-ttlock.init(ttlockListener)
 
 -- -----------------------------
 -- SCAN BUTTON
@@ -60,14 +57,13 @@ local scanBtn = widget.newButton({
         ttlock.startScanLock(ttlockListener)
     end
 })
-
 uiGroup:insert(scanBtn)
 
 -- -----------------------------
--- UNLOCK BUTTON
+-- STOP SCAN BUTTON
 -- -----------------------------
-local unlockBtn = widget.newButton({
-    label = "Unlock First",
+local stopScanBtn = widget.newButton({
+    label = "Stop Scan",
     x = display.contentCenterX,
     y = display.contentHeight - 160,
     width = 160,
@@ -75,21 +71,17 @@ local unlockBtn = widget.newButton({
     shape = "roundedRect",
     cornerRadius = 10,
     onRelease = function()
-        log("Unlocking first lock...")
-        -- Example: initialize first lock found
-        -- Replace with actual MAC from scanning results
-        local firstMac = "00:11:22:33:44:55"
-        ttlock.initLock(firstMac, ttlockListener)
+        ttlock.stopScanLock()
+        log("Scan stopped.")
     end
 })
-
-uiGroup:insert(unlockBtn)
+uiGroup:insert(stopScanBtn)
 
 -- -----------------------------
--- GET STATUS BUTTON
+-- INIT LOCK BUTTON
 -- -----------------------------
-local statusBtn = widget.newButton({
-    label = "Get Status",
+local initBtn = widget.newButton({
+    label = "Init Lock",
     x = display.contentCenterX,
     y = display.contentHeight - 220,
     width = 160,
@@ -97,16 +89,52 @@ local statusBtn = widget.newButton({
     shape = "roundedRect",
     cornerRadius = 10,
     onRelease = function()
-        log("Getting lock status...")
-        -- Example: resetEkey as status retrieval
-        -- Replace with actual lockData and MAC
-        local lockData = "lockDataExample"
-        local lockMac = "00:11:22:33:44:55"
-        ttlock.resetEkey(lockData, lockMac, ttlockListener)
+        local mac = "00:11:22:33:44:55" -- replace with actual MAC from scan
+        ttlock.initLock(mac, ttlockListener)
+        log("Initializing lock: " .. mac)
     end
 })
+uiGroup:insert(initBtn)
 
-uiGroup:insert(statusBtn)
+-- -----------------------------
+-- RESET EKEY BUTTON
+-- -----------------------------
+local resetEkeyBtn = widget.newButton({
+    label = "Reset Ekey",
+    x = display.contentCenterX,
+    y = display.contentHeight - 280,
+    width = 160,
+    height = 50,
+    shape = "roundedRect",
+    cornerRadius = 10,
+    onRelease = function()
+        local lockData = "LOCK_DATA"  -- replace with actual lockData
+        local lockMac = "00:11:22:33:44:55"
+        ttlock.resetEkey(lockData, lockMac, ttlockListener)
+        log("Resetting Ekey for: " .. lockMac)
+    end
+})
+uiGroup:insert(resetEkeyBtn)
+
+-- -----------------------------
+-- RESET LOCK BUTTON
+-- -----------------------------
+local resetLockBtn = widget.newButton({
+    label = "Reset Lock",
+    x = display.contentCenterX,
+    y = display.contentHeight - 340,
+    width = 160,
+    height = 50,
+    shape = "roundedRect",
+    cornerRadius = 10,
+    onRelease = function()
+        local lockData = "LOCK_DATA"
+        local lockMac = "00:11:22:33:44:55"
+        ttlock.resetLock(lockData, lockMac, ttlockListener)
+        log("Resetting lock: " .. lockMac)
+    end
+})
+uiGroup:insert(resetLockBtn)
 
 -- -----------------------------
 -- CLEAR OUTPUT BUTTON
@@ -123,5 +151,4 @@ local clearBtn = widget.newButton({
         output.text = ""
     end
 })
-
 uiGroup:insert(clearBtn)
