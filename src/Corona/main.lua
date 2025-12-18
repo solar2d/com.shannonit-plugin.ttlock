@@ -28,6 +28,22 @@ local function log(msg)
     output.text = output.text .. msg .. "\n"
 end
 
+-- Event listener for TTLock events
+local function ttlockListener(event)
+    if event.mac and event.name then
+        log("Found lock: " .. event.name .. " [" .. event.mac .. "]")
+    elseif event.status then
+        log("Operation status: " .. event.status)
+    elseif event.error then
+        log("Error: " .. event.error)
+    elseif event.message then
+        log("Message: " .. event.message)
+    end
+end
+
+-- Initialize the plugin
+ttlock.init(ttlockListener)
+
 -- -----------------------------
 -- SCAN BUTTON
 -- -----------------------------
@@ -41,9 +57,7 @@ local scanBtn = widget.newButton({
     cornerRadius = 10,
     onRelease = function()
         log("Scanning for locks...")
-        ttlock.scan(function(result)
-            log(result)
-        end)
+        ttlock.startScanLock(ttlockListener)
     end
 })
 
@@ -61,10 +75,11 @@ local unlockBtn = widget.newButton({
     shape = "roundedRect",
     cornerRadius = 10,
     onRelease = function()
-        log("Unlocking lock...")
-        ttlock.unlock(function(result)
-            log(result)
-        end)
+        log("Unlocking first lock...")
+        -- Example: initialize first lock found
+        -- Replace with actual MAC from scanning results
+        local firstMac = "00:11:22:33:44:55"
+        ttlock.initLock(firstMac, ttlockListener)
     end
 })
 
@@ -82,9 +97,12 @@ local statusBtn = widget.newButton({
     shape = "roundedRect",
     cornerRadius = 10,
     onRelease = function()
-        ttlock.getLockStatus(function(result)
-            log(result)
-        end)
+        log("Getting lock status...")
+        -- Example: resetEkey as status retrieval
+        -- Replace with actual lockData and MAC
+        local lockData = "lockDataExample"
+        local lockMac = "00:11:22:33:44:55"
+        ttlock.resetEkey(lockData, lockMac, ttlockListener)
     end
 })
 

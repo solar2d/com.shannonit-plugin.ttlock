@@ -4,35 +4,16 @@ plugins {
 
 android {
     namespace 'plugin.ttlock'
-    compileSdkVersion 34
+    compileSdkVersion 33
     defaultConfig {
         namespace 'plugin.ttlock'
         minSdkVersion 23
-        targetSdkVersion 34
+        targetSdkVersion 33
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
-    buildTypes {
-        debug {
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            minifyEnabled false
-            shrinkResources false
-            zipAlignEnabled false
-        }
-        release {
-            minifyEnabled true
-            shrinkResources false
-            zipAlignEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
 
-    buildFeatures {
-        dataBinding true
-        viewBinding true
-        buildConfig true
-    }
 
     compileOptions {
         targetCompatibility JavaVersion.VERSION_1_8

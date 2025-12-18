@@ -8,13 +8,22 @@ import com.ttlock.bl.sdk.api.ExtendedBluetoothDevice;
 import com.ttlock.bl.sdk.callback.*;
 import com.ttlock.bl.sdk.entity.LockError;
 
+/**
+ * Implements the Lua interface for the TTLock Corona plugin.
+ */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
+    /** Lua registry ID to the Lua function to be called for events. */
+    private int fListener;
+
+    /** This corresponds to the event name. */
+    private static final String EVENT_NAME = "ttlock";
 
     private TTLockUtils ttlockUtils;
-    private int listener;
 
+    @SuppressWarnings("unused")
     public LuaLoader() {
+        fListener = CoronaLua.REFNIL;
         ttlockUtils = new TTLockUtils();
         CoronaEnvironment.addRuntimeListener(this);
     }
@@ -22,11 +31,11 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     @Override
     public int invoke(LuaState L) {
         NamedJavaFunction[] luaFunctions = new NamedJavaFunction[]{
-                new StartScanLock(),
-                new StopScanLock(),
-                new InitLock(),
-                new ResetEkey(),
-                new ResetLock()
+                new StartScanLockWrapper(),
+                new StopScanLockWrapper(),
+                new InitLockWrapper(),
+                new ResetEkeyWrapper(),
+                new ResetLockWrapper()
         };
         String libName = L.toString(1);
         L.register(libName, luaFunctions);
@@ -37,59 +46,75 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     @Override public void onStarted(CoronaRuntime runtime) { }
     @Override public void onSuspended(CoronaRuntime runtime) { }
     @Override public void onResumed(CoronaRuntime runtime) { }
-    @Override public void onExiting(CoronaRuntime runtime) { }
+    @Override public void onExiting(CoronaRuntime runtime) {
+        CoronaLua.deleteRef(runtime.getLuaState(), fListener);
+        fListener = CoronaLua.REFNIL;
+    }
 
-    private class StartScanLock implements NamedJavaFunction {
+    /** Dispatch event to Lua */
+    public void dispatchEvent(final String message) {
+        CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
+            @Override
+            public void executeUsing(CoronaRuntime runtime) {
+                LuaState L = runtime.getLuaState();
+                CoronaLua.newEvent(L, EVENT_NAME);
+                L.pushString(message);
+                L.setField(-2, "message");
+                try {
+                    CoronaLua.dispatchEvent(L, fListener, 0);
+                } catch (Exception ignored) { }
+            }
+        });
+    }
+
+    /** Lua function: init listener */
+    public int init(LuaState L) {
+        int listenerIndex = 1;
+        if (CoronaLua.isListener(L, listenerIndex, EVENT_NAME)) {
+            fListener = CoronaLua.newRef(L, listenerIndex);
+        }
+        return 0;
+    }
+
+    // ---------------------------
+    // Lua function wrappers
+    // ---------------------------
+
+    private class StartScanLockWrapper implements NamedJavaFunction {
         @Override public String getName() { return "startScanLock"; }
 
         @Override
         public int invoke(final LuaState L) {
-            listener = CoronaLua.newRef(L, 1);
-
+            final int listener = CoronaLua.newRef(L, 1);
             ttlockUtils.startScanLock(new ScanLockCallback() {
                 @Override
                 public void onScanLockSuccess(ExtendedBluetoothDevice device) {
-                    CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-                        @Override
-                        public void executeUsing(CoronaRuntime runtime) {
-                            LuaState L = runtime.getLuaState();
-                            CoronaLua.newEvent(L, "ttlock");
-                            L.pushString(device.getAddress());
-                            L.setField(-2, "mac");
-                            L.pushString(device.getName());
-                            L.setField(-2, "name");
-                            // TODO: CoronaLua.dispatchEvent(L, listener, 0);
-                        }
-                    });
+                    dispatchDeviceEvent(device, listener);
                 }
 
                 @Override
                 public void onFail(LockError error) {
-                    CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-                        @Override
-                        public void executeUsing(CoronaRuntime runtime) {
-                            LuaState L = runtime.getLuaState();
-                            CoronaLua.newEvent(L, "ttlock");
-                            L.pushString(error.getDescription());
-                            L.setField(-2, "error");
-                            // TODO: CoronaLua.dispatchEvent(L, listener, 0);
-                        }
-                    });
+                    dispatchErrorEvent(error, listener);
                 }
+
+                // @Override
+                // public void onFinish() { }
             });
             return 0;
         }
     }
 
-    private class StopScanLock implements NamedJavaFunction {
+    private class StopScanLockWrapper implements NamedJavaFunction {
         @Override public String getName() { return "stopScanLock"; }
-        @Override public int invoke(LuaState L) {
+
+        @Override
+        public int invoke(LuaState L) {
             ttlockUtils.stopScanLock();
             return 0;
         }
     }
 
-    private class InitLock implements NamedJavaFunction {
+    private class InitLockWrapper implements NamedJavaFunction {
         @Override public String getName() { return "initLock"; }
 
         @Override
@@ -97,125 +122,73 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             String mac = L.checkString(1);
             // TODO: ExtendedBluetoothDevice device = ttlockUtils.getDeviceByMac(mac);
             ExtendedBluetoothDevice device;
-            listener = CoronaLua.newRef(L, 2);
-            // TODO: 
-            // ttlockUtils.initLock(device, new InitLockCallback() {
-            //     @Override
-            //     public void onInitLockSuccess(String lockData) {
-            //         CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-            //             @Override
-            //             public void executeUsing(CoronaRuntime runtime) {
-            //                 LuaState L = runtime.getLuaState();
-            //                 CoronaLua.newEvent(L, "ttlock");
-            //                 L.pushString("success");
-            //                 L.setField(-2, "status");
-            //                 // TODO: CoronaLua.dispatchEvent(L, listener, 0);
-            //             }
-            //         });
-            //     }
+            final int listener = CoronaLua.newRef(L, 2);
 
-            //     @Override
-            //     public void onFail(LockError error) {
-            //         CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-            //             @Override
-            //             public void executeUsing(CoronaRuntime runtime) {
-            //                 LuaState L = runtime.getLuaState();
-            //                 CoronaLua.newEvent(L, "ttlock");
-            //                 L.pushString(error.getDescription());
-            //                 L.setField(-2, "error");
-            //                 // TODO: CoronaLua.dispatchEvent(L, listener, 0);
-            //             }
-            //         });
-            //     }
-            // });
+            // TODO: ttlockUtils.initLock(device, callback)
 
             return 0;
         }
     }
 
-    private class ResetEkey implements NamedJavaFunction {
+    private class ResetEkeyWrapper implements NamedJavaFunction {
         @Override public String getName() { return "resetEkey"; }
 
         @Override
         public int invoke(final LuaState L) {
             String lockData = L.checkString(1);
             String lockMac = L.checkString(2);
-            listener = CoronaLua.newRef(L, 3);
+            final int listener = CoronaLua.newRef(L, 3);
 
-            ttlockUtils.resetEkey(lockData, lockMac, new ResetKeyCallback() {
-                @Override
-                public void onResetKeySuccess(String lockData) {
-                    CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-                        @Override
-                        public void executeUsing(CoronaRuntime runtime) {
-                            LuaState L = runtime.getLuaState();
-                            CoronaLua.newEvent(L, "ttlock");
-                            L.pushString("success");
-                            L.setField(-2, "status");
-                            // TODO: CoronaLua.dispatchEvent(L, listener, 0);
-                        }
-                    });
-                }
-
-                @Override
-                public void onFail(LockError error) {
-                    CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-                        @Override
-                        public void executeUsing(CoronaRuntime runtime) {
-                            LuaState L = runtime.getLuaState();
-                            CoronaLua.newEvent(L, "ttlock");
-                            L.pushString(error.getDescription());
-                            L.setField(-2, "error");
-                            // TODO: CoronaLua.dispatchEvent(L, listener, 0);
-                        }
-                    });
-                }
-            });
+            // TODO: ttlockUtils.resetEkey(lockData, lockMac, callback)
 
             return 0;
         }
     }
 
-    private class ResetLock implements NamedJavaFunction {
+    private class ResetLockWrapper implements NamedJavaFunction {
         @Override public String getName() { return "resetLock"; }
 
         @Override
         public int invoke(final LuaState L) {
             String lockData = L.checkString(1);
             String lockMac = L.checkString(2);
-            listener = CoronaLua.newRef(L, 3);
-            // TODO: 
-            // ttlockUtils.resetLock(lockData, lockMac, new ResetLockCallback() {
-            //     //TODO: @Override
-            //     // public void onResetLockSuccess(String lockData) {
-            //     //     CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-            //     //         @Override
-            //     //         public void executeUsing(CoronaRuntime runtime) {
-            //     //             LuaState L = runtime.getLuaState();
-            //     //             CoronaLua.newEvent(L, "ttlock");
-            //     //             L.pushString("success");
-            //     //             L.setField(-2, "status");
-            //     //             CoronaLua.dispatchEvent(L, listener, 0);
-            //     //         }
-            //     //     });
-            //     // }
+            final int listener = CoronaLua.newRef(L, 3);
 
-            //     @Override
-            //     public void onFail(LockError error) {
-            //         CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
-            //             @Override
-            //             public void executeUsing(CoronaRuntime runtime) {
-            //                 LuaState L = runtime.getLuaState();
-            //                 CoronaLua.newEvent(L, "ttlock");
-            //                 L.pushString(error.getDescription());
-            //                 L.setField(-2, "error");
-            //                 CoronaLua.dispatchEvent(L, listener, 0);
-            //             }
-            //         });
-            //     }
-            // });
+            // TODO: ttlockUtils.resetLock(lockData, lockMac, callback)
 
             return 0;
         }
+    }
+
+    // ---------------------------
+    // Helpers for events
+    // ---------------------------
+
+    private void dispatchDeviceEvent(final ExtendedBluetoothDevice device, final int listener) {
+        CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
+            @Override
+            public void executeUsing(CoronaRuntime runtime) {
+                LuaState L = runtime.getLuaState();
+                CoronaLua.newEvent(L, EVENT_NAME);
+                L.pushString(device.getAddress());
+                L.setField(-2, "mac");
+                L.pushString(device.getName());
+                L.setField(-2, "name");
+                // TODO: CoronaLua.dispatchEvent(L, listener, 0);
+            }
+        });
+    }
+
+    private void dispatchErrorEvent(final LockError error, final int listener) {
+        CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
+            @Override
+            public void executeUsing(CoronaRuntime runtime) {
+                LuaState L = runtime.getLuaState();
+                CoronaLua.newEvent(L, EVENT_NAME);
+                L.pushString(error.getDescription());
+                L.setField(-2, "error");
+                // TODO: CoronaLua.dispatchEvent(L, listener, 0);
+            }
+        });
     }
 }
