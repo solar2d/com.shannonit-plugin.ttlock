@@ -3,9 +3,10 @@ plugins {
 }
 
 android {
-    namespace "plugin.ttlock"
     compileSdkVersion 33
+    namespace "plugin.ttlock"
     defaultConfig {
+        namespace "plugin.ttlock"
         minSdkVersion 15
         versionCode 1
         versionName "1.0"
