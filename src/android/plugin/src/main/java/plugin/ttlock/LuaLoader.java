@@ -31,6 +31,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     @Override
     public int invoke(LuaState L) {
         NamedJavaFunction[] luaFunctions = new NamedJavaFunction[]{
+                new InitWrapper(),          // <--- This exposes ttlock.init()
                 new StartScanLockWrapper(this),
                 new StopScanLockWrapper(this),
                 new InitLockWrapper(this),
@@ -49,6 +50,21 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     @Override public void onExiting(CoronaRuntime runtime) {
         CoronaLua.deleteRef(runtime.getLuaState(), fListener);
         fListener = CoronaLua.REFNIL;
+    }
+
+    /** Init event to Lua */
+    public class InitWrapper implements NamedJavaFunction {
+        @Override
+        public String getName() { return "init"; }
+
+        @Override
+        public int invoke(LuaState L) {
+            int listenerIndex = 1;
+            if (CoronaLua.isListener(L, listenerIndex, EVENT_NAME)) {
+                fListener = CoronaLua.newRef(L, listenerIndex);
+            }
+            return 0;
+        }
     }
 
     /** Dispatch event to Lua */
