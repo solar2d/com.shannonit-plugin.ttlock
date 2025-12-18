@@ -1,13 +1,8 @@
 local widget = require("widget")
 local ttlock = require("plugin.ttlock")
 
--------------------------------------------------
--- UI SETUP
--------------------------------------------------
-
 local uiGroup = display.newGroup()
 
--- Title
 local title = display.newText({
     parent = uiGroup,
     text = "TTLock Scanner",
@@ -17,7 +12,6 @@ local title = display.newText({
     fontSize = 26
 })
 
--- Output area
 local output = display.newText({
     parent = uiGroup,
     text = "",
@@ -34,10 +28,9 @@ local function log(msg)
     output.text = output.text .. msg .. "\n"
 end
 
--------------------------------------------------
+-- -----------------------------
 -- SCAN BUTTON
--------------------------------------------------
-
+-- -----------------------------
 local scanBtn = widget.newButton({
     label = "Start Scan",
     x = display.contentCenterX,
@@ -47,21 +40,59 @@ local scanBtn = widget.newButton({
     shape = "roundedRect",
     cornerRadius = 10,
     onRelease = function()
-        if ttlock.scan then
-            log("Calling ttlock.scan() …")
-            ttlock.scan()
-        else
-            log("scan() is NOT available in plugin!")
-        end
+        log("Scanning for locks...")
+        ttlock.scan(function(result)
+            log(result)
+        end)
     end
 })
 
 uiGroup:insert(scanBtn)
 
--------------------------------------------------
--- OPTIONAL: CLEAR OUTPUT BUTTON
--------------------------------------------------
+-- -----------------------------
+-- UNLOCK BUTTON
+-- -----------------------------
+local unlockBtn = widget.newButton({
+    label = "Unlock First",
+    x = display.contentCenterX,
+    y = display.contentHeight - 160,
+    width = 160,
+    height = 50,
+    shape = "roundedRect",
+    cornerRadius = 10,
+    onRelease = function()
+        log("Unlocking lock...")
+        ttlock.unlock(function(result)
+            log(result)
+        end)
+    end
+})
 
+uiGroup:insert(unlockBtn)
+
+-- -----------------------------
+-- GET STATUS BUTTON
+-- -----------------------------
+local statusBtn = widget.newButton({
+    label = "Get Status",
+    x = display.contentCenterX,
+    y = display.contentHeight - 220,
+    width = 160,
+    height = 50,
+    shape = "roundedRect",
+    cornerRadius = 10,
+    onRelease = function()
+        ttlock.getLockStatus(function(result)
+            log(result)
+        end)
+    end
+})
+
+uiGroup:insert(statusBtn)
+
+-- -----------------------------
+-- CLEAR OUTPUT BUTTON
+-- -----------------------------
 local clearBtn = widget.newButton({
     label = "Clear",
     x = display.contentCenterX,

@@ -3,36 +3,60 @@ plugins {
 }
 
 android {
-    compileSdkVersion 33
-    namespace "plugin.ttlock"
+    namespace 'plugin.ttlock'
+    compileSdkVersion 34
     defaultConfig {
-        namespace "plugin.ttlock"
-        minSdkVersion 15
+        namespace 'plugin.ttlock'
+        minSdkVersion 23
+        targetSdkVersion 34
         versionCode 1
         versionName "1.0"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
+    buildTypes {
+        debug {
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled false
+            shrinkResources false
+            zipAlignEnabled false
+        }
+        release {
+            minifyEnabled true
+            shrinkResources false
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    buildFeatures {
+        dataBinding true
+        viewBinding true
+        buildConfig true
+    }
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
+        // compilerArgs << "-Xlint:deprecation"
+    }
+    lintOptions {
+        abortOnError false
+        checkReleaseBuilds false
+        // 防止在发布的时候出现因MissingTranslation导致Build Failed!
+        disable 'MissingTranslation'
     }
     //添加本地仓库，并把libs目录作为仓库地址
     repositories {
         flatDir {
             dirs 'libs'
         }
-        mavenCentral()
     }
-
-    
 }
 
 dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
-    // compileOnly files('libs/ttlock-3.5.4.aar')
-    // implementation "androidx.annotation:annotation:1.6.0"
-
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
