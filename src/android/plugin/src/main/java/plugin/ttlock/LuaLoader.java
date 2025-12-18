@@ -221,12 +221,22 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             @Override
             public void executeUsing(CoronaRuntime runtime) {
                 LuaState L = runtime.getLuaState();
+
+                // Create the Lua event
                 CoronaLua.newEvent(L, EVENT_NAME);
+
+                // Add device fields
                 L.pushString(device.getAddress());
                 L.setField(-2, "mac");
                 L.pushString(device.getName());
                 L.setField(-2, "name");
-                // TODO: CoronaLua.dispatchEvent(L, listener, 0);
+
+                // Dispatch event to Lua
+                try {
+                    CoronaLua.dispatchEvent(L, listener, 0);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
@@ -236,10 +246,20 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             @Override
             public void executeUsing(CoronaRuntime runtime) {
                 LuaState L = runtime.getLuaState();
+
+                // Create the Lua event
                 CoronaLua.newEvent(L, EVENT_NAME);
+
+                // Add error field
                 L.pushString(error.getDescription());
                 L.setField(-2, "error");
-                // TODO: CoronaLua.dispatchEvent(L, listener, 0);
+
+                // Dispatch event to Lua
+                try {
+                    CoronaLua.dispatchEvent(L, listener, 0);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
