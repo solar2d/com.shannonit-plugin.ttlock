@@ -16,11 +16,13 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
     //添加本地仓库，并把libs目录作为仓库地址
-    // repositories {
-    //     flatDir {
-    //         dirs 'libs'
-    //     }
-    // }
+    repositories {
+        flatDir {
+            dirs 'libs'
+        }
+        mavenCentral()
+    }
+
     
 }
 
@@ -28,7 +30,7 @@ dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
-    // compileOnly files('libs/jnlua-1.0.4.jar')
+    compileOnly files('libs/ttlock-3.5.4.aar')
     // implementation "androidx.annotation:annotation:1.6.0"
 
     implementation 'androidx.appcompat:appcompat:1.0.0'
