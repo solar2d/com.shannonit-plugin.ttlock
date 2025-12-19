@@ -34,10 +34,14 @@ android {
     }
 }
 
+
 dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
+    implementation(name:'ttlock-3.5.4', ext:'aar') {
+        transitive = true
+    }
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
@@ -48,7 +52,7 @@ dependencies {
 //    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
 //    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
     implementation 'com.google.code.gson:gson:2.6.2'
-    implementation 'com.ttlock:ttlock:3.5.4'
+    // implementation 'com.ttlock:ttlock:3.5.4'
     implementation 'com.squareup.retrofit2:retrofit:2.4.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.4.0'
 }
@@ -85,6 +89,12 @@ tasks.register("preparePluginFiles", Copy) {
     from(aarFile) {
         rename { "${pluginId.replace('.', '-')}.aar" }
     }
+
+    // Inside preparePluginFiles
+    from('libs') {
+        include 'ttlock-3.5.4.aar'  // copy TTLock SDK AAR
+    }
+
 
     into(tmpDir)
 
