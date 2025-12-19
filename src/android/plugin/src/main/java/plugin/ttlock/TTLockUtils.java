@@ -1,20 +1,23 @@
 package plugin.ttlock;
 
 import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+
+import androidx.annotation.RequiresPermission;
+
 import com.ttlock.bl.sdk.api.TTLockClient;
-import com.ttlock.bl.sdk.callback.ScanLockCallback;
+import com.ttlock.bl.sdk.api.ExtendedBluetoothDevice;
+import com.ttlock.bl.sdk.callback.ConnectLockCallback;
 import com.ttlock.bl.sdk.callback.InitLockCallback;
 import com.ttlock.bl.sdk.callback.ResetKeyCallback;
 import com.ttlock.bl.sdk.callback.ResetLockCallback;
-import com.ttlock.bl.sdk.api.ExtendedBluetoothDevice;
+import com.ttlock.bl.sdk.callback.ScanLockCallback;
 
 public class TTLockUtils {
 
-    public static TTLockUtils instance;
+    private static TTLockUtils instance;
 
-    public TTLockUtils() { }
+    private TTLockUtils() { }
 
     public static TTLockUtils getInstance() {
         if (instance == null) {
@@ -25,51 +28,90 @@ public class TTLockUtils {
 
     /** 1. Check if BLE is enabled */
     public boolean isBLEEnabled(Context context) {
-        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-        return adapter != null && adapter.isEnabled();
+        return TTLockClient.getDefault().isBLEEnabled(context);
     }
 
-    /** 2. Request user to turn on Bluetooth */
+    /** 2. Request to turn on Bluetooth */
     public void requestBleEnable(Activity activity) {
-        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-        if (adapter != null && !adapter.isEnabled()) {
-            adapter.enable(); // Note: this may require permissions; for a full UX, use Intent to ask user
-        }
+        TTLockClient.getDefault().requestBleEnable(activity);
     }
 
-    /** 3. Init the Bluetooth configuration / TTLock service */
-    public void prepareBTService(Context context) {
+    /** 3. Start Bluetooth Service */
+    public void startBleService(Context context) {
         TTLockClient.getDefault().prepareBTService(context);
     }
 
-    /** 4. Stop the service to release Bluetooth resource */
-    public void stopBTService() {
+    /** 4. Stop Bluetooth Service */
+    public void stopBleService() {
         TTLockClient.getDefault().stopBTService();
     }
 
-    /** 5. Start scan for Bluetooth locks */
-    public void startScanLock(ScanLockCallback callback) {
+    /** 5. Start Bluetooth Scan */
+    @RequiresPermission("android.permission.BLUETOOTH")
+    public void startBTDeviceScan(ScanLockCallback callback) {
         TTLockClient.getDefault().startScanLock(callback);
     }
 
-    /** 6. Stop scanning */
-    public void stopScanLock() {
+    /** 6. Stop Bluetooth Scan */
+    public void stopBTDeviceScan() {
         TTLockClient.getDefault().stopScanLock();
     }
 
-    /** 7. Init the lock */
-    public void initLock(ExtendedBluetoothDevice device, InitLockCallback callback) {
+    /** 7. Connect Device by lockData */
+    public void connectLock(String lockData, ConnectLockCallback callback) {
+        TTLockClient.getDefault().connectLock(lockData, callback);
+    }
+
+    /** 8. Lock Initialize */
+    public void lockInitialize(ExtendedBluetoothDevice device, InitLockCallback callback) {
         TTLockClient.getDefault().initLock(device, callback);
     }
 
-    /** 8. Reset the eKey (lockFlagPos will change) */
-    public void resetEkey(String lockData, String lockMac, ResetKeyCallback callback) {
-        //public void resetEkey(String lockData,String lockMac, ResetKeyCallback callback)
-        //TTLockClient.resetEKey(lockData, lockMac, callback);
-    }
-
-    /** 9. Reset the lock to factory mode */
+    /** 9. Reset Lock */
     public void resetLock(String lockData, String lockMac, ResetLockCallback callback) {
         TTLockClient.getDefault().resetLock(lockData, lockMac, callback);
+    }
+
+    /** 10. Reset EKey */
+    public void resetEKey(String lockData, String lockMac, ResetKeyCallback callback) {
+        TTLockClient.getDefault().resetEkey(lockData, lockMac, callback);
+    }
+
+    /** 11. Set UID for operations */
+    public void setUid(int uid) {
+        TTLockClient.getDefault().setUid(uid);
+    }
+
+    /** 12. Unlock by user (callback optional for Lua) */
+    public void unlockByUser(ExtendedBluetoothDevice device,
+                             int uid,
+                             String lockVersion,
+                             long startDate,
+                             long endDate,
+                             String unlockKey,
+                             int lockFlagPos,
+                             String aesKeyStr,
+                             long timezoneOffset) {
+        // TTLockClient.getDefault().unlockByUser(device, uid, lockVersion, startDate, endDate,
+        //         unlockKey, lockFlagPos, aesKeyStr, timezoneOffset, null);
+    }
+
+    /** 13. Unlock by administrator (callback optional for Lua) */
+    public void unlockByAdministrator(ExtendedBluetoothDevice device,
+                                      int uid,
+                                      String lockVersion,
+                                      String adminPs,
+                                      String unlockKey,
+                                      int lockFlagPos,
+                                      long unlockDate,
+                                      String aesKeyStr,
+                                      long timezoneOffset) {
+        // TTLockClient.getDefault().unlockByAdministrator(device, uid, lockVersion, adminPs, unlockKey,
+        //         lockFlagPos, unlockDate, aesKeyStr, timezoneOffset, null);
+    }
+
+    /** 14. Disconnect */
+    public void disconnect() {
+        TTLockClient.getDefault().disconnect();
     }
 }
