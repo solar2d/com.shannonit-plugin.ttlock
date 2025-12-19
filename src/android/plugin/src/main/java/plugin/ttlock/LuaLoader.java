@@ -21,6 +21,15 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         CoronaEnvironment.addRuntimeListener(this);
     }
 
+    public int init(LuaState L) {
+    int listenerIndex = 1;
+        if (CoronaLua.isListener(L, listenerIndex, EVENT_NAME)) {
+            fListener = CoronaLua.newRef(L, listenerIndex);
+        }
+        return 0;
+    }
+
+
     @Override
     public int invoke(LuaState L) {
         NamedJavaFunction[] luaFunctions = new NamedJavaFunction[]{
@@ -52,21 +61,14 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         fListener = CoronaLua.REFNIL;
     }
 
-    private class InitWrapper implements NamedJavaFunction {
-    @Override public String getName() { return "init"; }
-        @Override public int invoke(LuaState L) {
-            // Example: store the listener reference
-            if (L.isFunction(1)) {
-                fListener = CoronaLua.newRef(L, 1);
-            }
-            return 0;
-        }
-    }
-
 
     // ----------------------------
     // Lua Wrappers
     // ----------------------------
+    private class InitWrapper implements NamedJavaFunction {
+    @Override public String getName() { return "init"; }
+        @Override public int invoke(LuaState L) { return init(L); }
+    }
 
     private class IsBLEEnabledWrapper implements NamedJavaFunction {
         @Override public String getName() { return "isBLEEnabled"; }

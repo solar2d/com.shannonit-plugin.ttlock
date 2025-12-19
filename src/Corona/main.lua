@@ -30,21 +30,16 @@ local function log(msg)
     output.text = output.text .. msg .. "\n"
 end
 
--- Store the first scanned device MAC
-local firstScannedMac = nil
-
+-- -----------------------------
 -- Initialize TTLock listener
+-- -----------------------------
 ttlock.init(function(event)
-    if event.mac and event.name then
+    if event.type == "found" and event.mac and event.name then
         log("Found: " .. event.name .. " (" .. event.mac .. ")")
-        -- Save the first scanned device MAC
-        if not firstScannedMac then
-            firstScannedMac = event.mac
-        end
-    elseif event.error then
-        log("Scan Error: " .. event.error)
     elseif event.message then
         log("Event: " .. event.message)
+    elseif event.error then
+        log("Scan Error: " .. event.error)
     end
 end)
 
@@ -61,8 +56,7 @@ local scanBtn = widget.newButton({
     cornerRadius = 10,
     onRelease = function()
         log("Scanning for locks...")
-        firstScannedMac = nil  -- Reset previous MAC
-        ttlock.startScanLock()
+        ttlock.startBTDeviceScan()  -- Java function: Start scan
     end
 })
 uiGroup:insert(scanBtn)
@@ -80,7 +74,7 @@ local stopBtn = widget.newButton({
     cornerRadius = 10,
     onRelease = function()
         log("Stopping scan...")
-        ttlock.stopScanLock()
+        ttlock.stopBTDeviceScan()  -- Java function: Stop scan
     end
 })
 uiGroup:insert(stopBtn)
@@ -97,12 +91,8 @@ local unlockBtn = widget.newButton({
     shape = "roundedRect",
     cornerRadius = 10,
     onRelease = function()
-        if firstScannedMac then
-            log("Unlocking lock with MAC: " .. firstScannedMac)
-            ttlock.lockInitialize(firstScannedMac) -- Initialize first scanned lock
-        else
-            log("No lock scanned yet!")
-        end
+        log("Initializing last scanned lock...")
+        ttlock.lockInitialize()  -- Java function: Uses lastScannedDevice internally
     end
 })
 uiGroup:insert(unlockBtn)
