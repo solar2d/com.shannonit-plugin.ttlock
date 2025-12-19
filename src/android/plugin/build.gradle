@@ -181,8 +181,6 @@ tasks.register("preparePluginPackage", Tar) {
 }
 
 
-
-
 // Optional: high-level task to do everything
 tasks.register("buildPlugin") {
     group = "Solar2Dev"

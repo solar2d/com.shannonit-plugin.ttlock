@@ -24,6 +24,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     @Override
     public int invoke(LuaState L) {
         NamedJavaFunction[] luaFunctions = new NamedJavaFunction[]{
+                new InitWrapper(),  
                 new IsBLEEnabledWrapper(),
                 new RequestBleEnableWrapper(),
                 new StartBleServiceWrapper(),
@@ -50,6 +51,18 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         CoronaLua.deleteRef(runtime.getLuaState(), fListener);
         fListener = CoronaLua.REFNIL;
     }
+
+    private class InitWrapper implements NamedJavaFunction {
+    @Override public String getName() { return "init"; }
+        @Override public int invoke(LuaState L) {
+            // Example: store the listener reference
+            if (L.isFunction(1)) {
+                fListener = CoronaLua.newRef(L, 1);
+            }
+            return 0;
+        }
+    }
+
 
     // ----------------------------
     // Lua Wrappers
