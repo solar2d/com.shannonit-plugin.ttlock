@@ -90,7 +90,7 @@ local unlockBtn = widget.newButton({
     cornerRadius = 10,
     onRelease = function()
         log("Unlocking lock...")
-        ttlock.initLock("MAC_ADDRESS_HERE")  -- replace with actual MAC or selected device
+        ttlock.initLock("MAC_ADDRESS_HERE") -- Replace with selected device's MAC
     end
 })
 uiGroup:insert(unlockBtn)

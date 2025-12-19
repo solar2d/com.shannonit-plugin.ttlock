@@ -109,20 +109,20 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
 
         @Override
         public int invoke(final LuaState L) {
-            final int listener = CoronaLua.newRef(L, 1);
             ttlockUtils.startScanLock(new ScanLockCallback() {
                 @Override
                 public void onScanLockSuccess(ExtendedBluetoothDevice device) {
-                    loader.dispatchDeviceEvent(device, listener);
+                    loader.dispatchDeviceEvent(device, loader.fListener);
                 }
 
                 @Override
                 public void onFail(LockError error) {
-                    loader.dispatchErrorEvent(error, listener);
+                    loader.dispatchErrorEvent(error, loader.fListener);
                 }
             });
             return 0;
         }
+
     }
 
     private static class StopScanLockWrapper implements NamedJavaFunction {
@@ -217,26 +217,18 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     // ---------------------------
 
     private void dispatchDeviceEvent(final ExtendedBluetoothDevice device, final int listener) {
+        if (listener == CoronaLua.REFNIL) return;
+
         CoronaEnvironment.getCoronaActivity().getRuntimeTaskDispatcher().send(new CoronaRuntimeTask() {
             @Override
             public void executeUsing(CoronaRuntime runtime) {
                 LuaState L = runtime.getLuaState();
-
-                // Create the Lua event
                 CoronaLua.newEvent(L, EVENT_NAME);
-
-                // Add device fields
                 L.pushString(device.getAddress());
                 L.setField(-2, "mac");
                 L.pushString(device.getName());
                 L.setField(-2, "name");
-
-                // Dispatch event to Lua
-                try {
-                    CoronaLua.dispatchEvent(L, listener, 0);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                //CoronaLua.dispatchEvent(L, listener, 0);
             }
         });
     }
