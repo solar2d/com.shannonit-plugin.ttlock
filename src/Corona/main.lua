@@ -1,115 +1,180 @@
+--------------------------------------------------------------------------------
+-- main.lua
+-- TTLock Solar2D test app (auto-scroll safe)
+--------------------------------------------------------------------------------
+
 local widget = require("widget")
 local ttlock = require("plugin.ttlock")
 
-local uiGroup = display.newGroup()
+--------------------------------------------------------------------------------
+-- UI SETUP
+--------------------------------------------------------------------------------
 
--- Title
+display.setStatusBar(display.HiddenStatusBar)
+
+local group = display.newGroup()
+
 local title = display.newText({
-    parent = uiGroup,
+    parent = group,
     text = "TTLock Scanner",
     x = display.contentCenterX,
-    y = 80,
+    y = 40,
     font = native.systemFontBold,
-    fontSize = 26
+    fontSize = 24
 })
 
--- Output log
-local output = display.newText({
-    parent = uiGroup,
+--------------------------------------------------------------------------------
+-- LOG VIEW (AUTO SCROLL)
+--------------------------------------------------------------------------------
+
+local LOG_TOP = 80
+local LOG_BOTTOM_MARGIN = 260
+
+local logText = display.newText({
+    parent = group,
     text = "",
-    x = display.contentCenterX,
-    y = display.contentCenterY,
+    x = 20,
+    y = LOG_TOP,
     width = display.contentWidth - 40,
-    height = 200,
+    height = display.contentHeight - LOG_BOTTOM_MARGIN,
     font = native.systemFont,
-    fontSize = 16,
+    fontSize = 14,
     align = "left"
 })
 
+logText.anchorX = 0
+logText.anchorY = 0
+
 local function log(msg)
-    output.text = output.text .. msg .. "\n"
+    print(msg)
+    logText.text = logText.text .. msg .. "\n"
+
+    -- Auto scroll when overflowing
+    local bounds = logText.contentBounds
+    if bounds then
+        local visibleBottom = display.contentHeight - LOG_BOTTOM_MARGIN + LOG_TOP
+        local overflow = bounds.yMax - visibleBottom
+        if overflow > 0 then
+            logText.y = logText.y - overflow
+        end
+    end
 end
 
--- -----------------------------
--- Initialize TTLock listener
--- -----------------------------
+--------------------------------------------------------------------------------
+-- PERMISSION STATUS (READ ONLY)
+--------------------------------------------------------------------------------
+
+local REQUIRED_PERMISSIONS = {
+    "android.permission.ACCESS_FINE_LOCATION",
+    "android.permission.BLUETOOTH_SCAN",
+    "android.permission.BLUETOOTH_CONNECT"
+}
+
+local function printPermissionStatus()
+    log("Permission status:")
+    for _, perm in ipairs(REQUIRED_PERMISSIONS) do
+        local granted = system.getInfo("androidAppPermission", perm)
+        log("  " .. perm .. " = " .. (granted and "GRANTED" or "MISSING"))
+    end
+end
+
+--------------------------------------------------------------------------------
+-- TTLOCK STATE
+--------------------------------------------------------------------------------
+
+local blePrepared = false
+local scanning = false
+local lastScannedMac = nil
+
+--------------------------------------------------------------------------------
+-- TTLOCK LISTENER
+--------------------------------------------------------------------------------
+
 ttlock.init(function(event)
-    if event.type == "found" and event.mac and event.name then
-        log("Found: " .. event.name .. " (" .. event.mac .. ")")
-    elseif event.message then
-        log("Event: " .. event.message)
-    elseif event.error then
-        log("Scan Error: " .. event.error)
+    if event.message then
+        log("Event: " .. tostring(event.message))
+    end
+
+    if event.type == "found" then
+        log("Found lock: " .. tostring(event.name) .. " (" .. tostring(event.mac) .. ")")
+        lastScannedMac = event.mac
     end
 end)
 
--- -----------------------------
--- SCAN BUTTON
--- -----------------------------
-local scanBtn = widget.newButton({
-    label = "Start Scan",
-    x = display.contentCenterX,
-    y = display.contentHeight - 100,
-    width = 160,
-    height = 50,
-    shape = "roundedRect",
-    cornerRadius = 10,
-    onRelease = function()
-        log("Scanning for locks...")
-        ttlock.startBTDeviceScan()  -- Java function: Start scan
-    end
-})
-uiGroup:insert(scanBtn)
+--------------------------------------------------------------------------------
+-- SAFE BLE HANDLING
+--------------------------------------------------------------------------------
 
--- -----------------------------
--- STOP SCAN BUTTON
--- -----------------------------
-local stopBtn = widget.newButton({
-    label = "Stop Scan",
-    x = display.contentCenterX,
-    y = display.contentHeight - 160,
-    width = 160,
-    height = 50,
-    shape = "roundedRect",
-    cornerRadius = 10,
-    onRelease = function()
-        log("Stopping scan...")
-        ttlock.stopBTDeviceScan()  -- Java function: Stop scan
-    end
-})
-uiGroup:insert(stopBtn)
+local function prepareBLE()
+    if blePrepared then return end
+    log("Preparing BLE service...")
+    ttlock.startBleService()
+    blePrepared = true
+end
 
--- -----------------------------
--- UNLOCK BUTTON
--- -----------------------------
-local unlockBtn = widget.newButton({
-    label = "Unlock First",
-    x = display.contentCenterX,
-    y = display.contentHeight - 220,
-    width = 160,
-    height = 50,
-    shape = "roundedRect",
-    cornerRadius = 10,
-    onRelease = function()
-        log("Initializing last scanned lock...")
-        ttlock.lockInitialize()  -- Java function: Uses lastScannedDevice internally
+local function startScan()
+    if scanning then
+        log("Scan already running")
+        return
     end
-})
-uiGroup:insert(unlockBtn)
 
--- -----------------------------
--- CLEAR OUTPUT BUTTON
--- -----------------------------
-local clearBtn = widget.newButton({
-    label = "Clear",
-    x = display.contentCenterX,
-    y = display.contentHeight - 40,
-    width = 120,
-    height = 40,
-    shape = "roundedRect",
-    cornerRadius = 10,
-    onRelease = function()
-        output.text = ""
+    prepareBLE()
+
+    log("Starting scan...")
+    ttlock.startBTDeviceScan()
+    scanning = true
+end
+
+local function stopScan()
+    if not scanning then
+        log("Scan not running")
+        return
     end
-})
-uiGroup:insert(clearBtn)
+
+    log("Stopping scan...")
+    ttlock.stopBTDeviceScan()
+    scanning = false
+end
+
+local function connectLock()
+    if not lastScannedMac then
+        log("No scanned lock to connect")
+        return
+    end
+
+    log("Initializing lock: " .. lastScannedMac)
+    ttlock.lockInitialize()
+end
+
+--------------------------------------------------------------------------------
+-- BUTTONS
+--------------------------------------------------------------------------------
+
+local function makeButton(label, y, handler)
+    local btn = widget.newButton({
+        label = label,
+        x = display.contentCenterX,
+        y = y,
+        width = 220,
+        height = 42,
+        shape = "roundedRect",
+        cornerRadius = 8,
+        onRelease = handler
+    })
+    group:insert(btn)
+end
+
+local BTN_Y = display.contentHeight - 180
+local BTN_GAP = 48
+
+makeButton("Print Permission Status", BTN_Y, printPermissionStatus)
+makeButton("Start Scan", BTN_Y + BTN_GAP, startScan)
+makeButton("Stop Scan", BTN_Y + BTN_GAP * 2, stopScan)
+makeButton("Init Last Lock", BTN_Y + BTN_GAP * 3, connectLock)
+
+--------------------------------------------------------------------------------
+-- INIT
+--------------------------------------------------------------------------------
+
+log("App started")
+printPermissionStatus()
