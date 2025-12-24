@@ -1,12 +1,12 @@
-Sources for the plugin plugin.shannonit.
+## Sources for the plugin `plugin.shannonit`
 
-Add following to your build.settings to use:
+Add the following to your `build.settings` to use it:
 
+```lua
 {
     plugins = {
-        "plugin.ttlock" = {
+        ["plugin.ttlock"] = {
             publisherId = "com.shannonit",
         },
     },
 }
-
