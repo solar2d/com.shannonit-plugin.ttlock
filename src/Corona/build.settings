@@ -3,6 +3,10 @@ settings = {
         ["plugin.ttlock"] = {
             publisherId = "com.shannonit",
         },
+        ["plugin.permissions"] = {
+            publisherId = "com.coronalabs",
+            supportedPlatforms = { android=true }
+        }
     },
 
     android = {
@@ -13,7 +17,7 @@ settings = {
             "android.permission.BLUETOOTH_SCAN",
             "android.permission.BLUETOOTH_CONNECT"
         },
-        -- Add required TTLock services here
+        -- Required TTLock services
         applicationChildElements = [[
             <service android:name="com.ttlock.bl.sdk.service.BluetoothLeService"/>
             <service android:name="com.ttlock.bl.sdk.service.DfuService"/>

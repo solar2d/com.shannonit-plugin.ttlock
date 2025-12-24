@@ -1,5 +1,8 @@
 package plugin.ttlock;
 
+import android.app.Activity;
+import android.Manifest;
+
 import com.ansca.corona.*;
 import com.naef.jnlua.*;
 
@@ -44,7 +47,8 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
                 new LockInitWrapper(),
                 new ResetLockWrapper(),
                 new ResetEKeyWrapper(),
-                new UnlockByUserWrapper()
+                new UnlockByUserWrapper(),
+                 new RequestPermissionsWrapper()  
         };
         L.register(L.toString(1), luaFunctions);
         return 1;
@@ -61,6 +65,25 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         fListener = CoronaLua.REFNIL;
     }
 
+
+    private class RequestPermissionsWrapper implements NamedJavaFunction {
+        @Override
+        public String getName() { return "requestPermissions"; }
+
+        @Override
+        public int invoke(LuaState L) {
+            Activity activity = CoronaEnvironment.getCoronaActivity();
+
+            String[] permissions = new String[]{
+                android.Manifest.permission.BLUETOOTH_SCAN,
+                android.Manifest.permission.BLUETOOTH_CONNECT,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            };
+
+            activity.requestPermissions(permissions, 1001);
+            return 0;
+        }
+    }
 
     // ----------------------------
     // Lua Wrappers

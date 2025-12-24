@@ -1,180 +1,57 @@
---------------------------------------------------------------------------------
--- main.lua
--- TTLock Solar2D test app (auto-scroll safe)
---------------------------------------------------------------------------------
-
-local widget = require("widget")
 local ttlock = require("plugin.ttlock")
 
---------------------------------------------------------------------------------
--- UI SETUP
---------------------------------------------------------------------------------
-
-display.setStatusBar(display.HiddenStatusBar)
-
-local group = display.newGroup()
-
-local title = display.newText({
-    parent = group,
-    text = "TTLock Scanner",
+local debugText = display.newText({
+    text = "TTLock Debug:\n",
     x = display.contentCenterX,
-    y = 40,
-    font = native.systemFontBold,
-    fontSize = 24
-})
-
---------------------------------------------------------------------------------
--- LOG VIEW (AUTO SCROLL)
---------------------------------------------------------------------------------
-
-local LOG_TOP = 80
-local LOG_BOTTOM_MARGIN = 260
-
-local logText = display.newText({
-    parent = group,
-    text = "",
-    x = 20,
-    y = LOG_TOP,
-    width = display.contentWidth - 40,
-    height = display.contentHeight - LOG_BOTTOM_MARGIN,
+    y = 100,
+    width = display.contentWidth - 20,
+    height = 300,
     font = native.systemFont,
-    fontSize = 14,
+    fontSize = 16,
     align = "left"
 })
+debugText:setFillColor(1,1,1)
 
-logText.anchorX = 0
-logText.anchorY = 0
-
-local function log(msg)
-    print(msg)
-    logText.text = logText.text .. msg .. "\n"
-
-    -- Auto scroll when overflowing
-    local bounds = logText.contentBounds
-    if bounds then
-        local visibleBottom = display.contentHeight - LOG_BOTTOM_MARGIN + LOG_TOP
-        local overflow = bounds.yMax - visibleBottom
-        if overflow > 0 then
-            logText.y = logText.y - overflow
-        end
-    end
+local function logDebug(msg)
+    debugText.text = debugText.text .. "\n" .. msg
+    print(msg)  -- also log to console
 end
 
---------------------------------------------------------------------------------
--- PERMISSION STATUS (READ ONLY)
---------------------------------------------------------------------------------
-
-local REQUIRED_PERMISSIONS = {
-    "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.BLUETOOTH_SCAN",
-    "android.permission.BLUETOOTH_CONNECT"
-}
-
-local function printPermissionStatus()
-    log("Permission status:")
-    for _, perm in ipairs(REQUIRED_PERMISSIONS) do
-        local granted = system.getInfo("androidAppPermission", perm)
-        log("  " .. perm .. " = " .. (granted and "GRANTED" or "MISSING"))
-    end
-end
-
---------------------------------------------------------------------------------
--- TTLOCK STATE
---------------------------------------------------------------------------------
-
-local blePrepared = false
-local scanning = false
-local lastScannedMac = nil
-
---------------------------------------------------------------------------------
--- TTLOCK LISTENER
---------------------------------------------------------------------------------
-
-ttlock.init(function(event)
-    if event.message then
-        log("Event: " .. tostring(event.message))
+local function ttlockListener(event)
+    logDebug("Event received")
+    for k,v in pairs(event) do
+        logDebug(k .. ": " .. tostring(v))
     end
 
     if event.type == "found" then
-        log("Found lock: " .. tostring(event.name) .. " (" .. tostring(event.mac) .. ")")
-        lastScannedMac = event.mac
+        logDebug("Device found: " .. event.name .. " (" .. event.mac .. ")")
     end
+end
+
+ttlock.init(ttlockListener)
+
+-- Check Bluetooth
+local isOn = ttlock.isBLEEnabled()
+logDebug("Bluetooth enabled: " .. tostring(isOn))
+
+if not isOn then
+    logDebug("Requesting Bluetooth enable...")
+    ttlock.requestBleEnable()
+end
+
+ttlock.startBleService()
+
+timer.performWithDelay(2000, function()
+    logDebug("Starting scan...")
+    ttlock.startBTDeviceScan()
 end)
 
---------------------------------------------------------------------------------
--- SAFE BLE HANDLING
---------------------------------------------------------------------------------
-
-local function prepareBLE()
-    if blePrepared then return end
-    log("Preparing BLE service...")
-    ttlock.startBleService()
-    blePrepared = true
-end
-
-local function startScan()
-    if scanning then
-        log("Scan already running")
-        return
-    end
-
-    prepareBLE()
-
-    log("Starting scan...")
-    ttlock.startBTDeviceScan()
-    scanning = true
-end
-
-local function stopScan()
-    if not scanning then
-        log("Scan not running")
-        return
-    end
-
-    log("Stopping scan...")
+timer.performWithDelay(10000, function()
+    logDebug("Stopping scan...")
     ttlock.stopBTDeviceScan()
-    scanning = false
-end
+end)
 
-local function connectLock()
-    if not lastScannedMac then
-        log("No scanned lock to connect")
-        return
-    end
-
-    log("Initializing lock: " .. lastScannedMac)
+timer.performWithDelay(12000, function()
+    logDebug("Initializing lock...")
     ttlock.lockInitialize()
-end
-
---------------------------------------------------------------------------------
--- BUTTONS
---------------------------------------------------------------------------------
-
-local function makeButton(label, y, handler)
-    local btn = widget.newButton({
-        label = label,
-        x = display.contentCenterX,
-        y = y,
-        width = 220,
-        height = 42,
-        shape = "roundedRect",
-        cornerRadius = 8,
-        onRelease = handler
-    })
-    group:insert(btn)
-end
-
-local BTN_Y = display.contentHeight - 180
-local BTN_GAP = 48
-
-makeButton("Print Permission Status", BTN_Y, printPermissionStatus)
-makeButton("Start Scan", BTN_Y + BTN_GAP, startScan)
-makeButton("Stop Scan", BTN_Y + BTN_GAP * 2, stopScan)
-makeButton("Init Last Lock", BTN_Y + BTN_GAP * 3, connectLock)
-
---------------------------------------------------------------------------------
--- INIT
---------------------------------------------------------------------------------
-
-log("App started")
-printPermissionStatus()
+end)

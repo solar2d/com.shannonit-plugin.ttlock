@@ -62,7 +62,7 @@ import org.gradle.api.tasks.bundling.Compression
 
 // ---- Variables ----
 def pluginId = android.namespace
-def solar2DVersion = "2025.3721"
+def solar2DVersion = "2025.3722"
 
 def aarFile = file("$buildDir/outputs/aar/$project.name-release.aar")
 //def aarFile = file("$buildDir/intermediates/aar_main_jar/release/classes.jar")
