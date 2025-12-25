@@ -1,6 +1,7 @@
 package plugin.ttlock;
 
 import android.app.Activity;
+import android.Manifest;
 
 import com.ansca.corona.*;
 import com.naef.jnlua.*;
@@ -9,6 +10,7 @@ import com.ttlock.bl.sdk.api.ExtendedBluetoothDevice;
 import com.ttlock.bl.sdk.callback.InitLockCallback;
 import com.ttlock.bl.sdk.callback.ScanLockCallback;
 import com.ttlock.bl.sdk.entity.LockError;
+import com.ttlock.bl.sdk.api.TTLockClient;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
@@ -41,7 +43,12 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
                 new StopBleServiceWrapper(),
                 new StartScanWrapper(),
                 new StopScanWrapper(),
-                new LockInitWrapper()
+                new ConnectLockWrapper(),
+                new LockInitWrapper(),
+                new ResetLockWrapper(),
+                new ResetEKeyWrapper(),
+                new UnlockByUserWrapper(),
+                new RequestPermissionsWrapper()
         };
         L.register(L.toString(1), luaFunctions);
         return 1;
@@ -54,7 +61,6 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
 
     @Override
     public void onExiting(CoronaRuntime runtime) {
-        ttlockUtils.stopBleService();
         CoronaLua.deleteRef(runtime.getLuaState(), fListener);
         fListener = CoronaLua.REFNIL;
     }
@@ -62,6 +68,13 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     // ----------------------------
     // Lua Wrappers
     // ----------------------------
+
+    /**
+     * prepareBTService should be called first,or all TTLock SDK function will not be run correctly
+     */
+    // private void initBtService(){
+    //     TTLockClient.getDefault().prepareBTService(getApplicationContext());
+    // }
 
     private class InitWrapper implements NamedJavaFunction {
         @Override public String getName() { return "init"; }
@@ -71,11 +84,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     private class IsBLEEnabledWrapper implements NamedJavaFunction {
         @Override public String getName() { return "isBLEEnabled"; }
         @Override public int invoke(LuaState L) {
-            L.pushBoolean(
-                    ttlockUtils.isBLEEnabled(
-                            CoronaEnvironment.getCoronaActivity()
-                    )
-            );
+            L.pushBoolean(ttlockUtils.isBLEEnabled(CoronaEnvironment.getCoronaActivity()));
             return 1;
         }
     }
@@ -83,22 +92,18 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     private class RequestBleEnableWrapper implements NamedJavaFunction {
         @Override public String getName() { return "requestBleEnable"; }
         @Override public int invoke(LuaState L) {
-            ttlockUtils.requestBleEnable(
-                    CoronaEnvironment.getCoronaActivity()
-            );
+            Activity activity = CoronaEnvironment.getCoronaActivity();
+            ttlockUtils.requestBleEnable(activity);
+            TTLockClient.getDefault().prepareBTService(activity.getApplicationContext());
             return 0;
         }
     }
 
+
     private class StartBleServiceWrapper implements NamedJavaFunction {
         @Override public String getName() { return "startBleService"; }
         @Override public int invoke(LuaState L) {
-            Activity activity = CoronaEnvironment.getCoronaActivity();
-            if (activity != null) {
-                ttlockUtils.startBleService(
-                        activity.getApplicationContext()
-                );
-            }
+            ttlockUtils.startBleService(CoronaEnvironment.getCoronaActivity());
             return 0;
         }
     }
@@ -106,7 +111,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     private class StopBleServiceWrapper implements NamedJavaFunction {
         @Override public String getName() { return "stopBleService"; }
         @Override public int invoke(LuaState L) {
-            ttlockUtils.stopBleService();
+            ttlockUtils.stopBTDeviceScan(); // stop service if needed
             return 0;
         }
     }
@@ -114,20 +119,17 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     private class StartScanWrapper implements NamedJavaFunction {
         @Override public String getName() { return "startBTDeviceScan"; }
         @Override public int invoke(LuaState L) {
-
             ttlockUtils.startBTDeviceScan(new ScanLockCallback() {
                 @Override
                 public void onScanLockSuccess(ExtendedBluetoothDevice device) {
                     lastScannedDevice = device;
                     dispatchDeviceEvent(device, "found");
                 }
-
                 @Override
                 public void onFail(LockError error) {
                     dispatchEvent(error.getErrorMsg());
                 }
             });
-
             return 0;
         }
     }
@@ -140,33 +142,68 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         }
     }
 
+    private class ConnectLockWrapper implements NamedJavaFunction {
+        @Override public String getName() { return "connectLock"; }
+        @Override public int invoke(LuaState L) {
+            String lockData = L.checkString(1);
+            ttlockUtils.connectLock(lockData, null);
+            return 0;
+        }
+    }
+
     private class LockInitWrapper implements NamedJavaFunction {
         @Override public String getName() { return "lockInitialize"; }
-
-        @Override
-        public int invoke(LuaState L) {
-
+        @Override public int invoke(LuaState L) {
             if (lastScannedDevice == null) {
                 dispatchEvent("no_device_scanned");
                 return 0;
             }
 
-            ttlockUtils.lockInitialize(
-                    lastScannedDevice,
-                    new InitLockCallback() {
+            ttlockUtils.lockInitialize(lastScannedDevice, new InitLockCallback() {
+                @Override
+                public void onInitLockSuccess(String lockData) {
+                    dispatchEvent("lock_initialized");
+                }
+                @Override
+                public void onFail(LockError error) {
+                    dispatchEvent(error.getErrorMsg());
+                }
+            });
+            return 0;
+        }
+    }
 
-                        @Override
-                        public void onInitLockSuccess(String lockData) {
-                            dispatchEvent("lock_initialized");
-                        }
+    private class ResetLockWrapper implements NamedJavaFunction {
+        @Override public String getName() { return "resetLock"; }
+        @Override public int invoke(LuaState L) {
+            ttlockUtils.resetLock(L.checkString(1), L.checkString(2), null);
+            return 0;
+        }
+    }
 
-                        @Override
-                        public void onFail(LockError error) {
-                            dispatchEvent(error.getErrorMsg());
-                        }
-                    }
-            );
+    private class ResetEKeyWrapper implements NamedJavaFunction {
+        @Override public String getName() { return "resetEKey"; }
+        @Override public int invoke(LuaState L) {
+            ttlockUtils.resetEKey(L.checkString(1), L.checkString(2), null);
+            return 0;
+        }
+    }
 
+    private class UnlockByUserWrapper implements NamedJavaFunction {
+        @Override public String getName() { return "unlockByUser"; }
+        @Override public int invoke(LuaState L) { return 0; } // v3+ unlock internally handled
+    }
+
+    private class RequestPermissionsWrapper implements NamedJavaFunction {
+        @Override public String getName() { return "requestPermissions"; }
+        @Override public int invoke(LuaState L) {
+            Activity activity = CoronaEnvironment.getCoronaActivity();
+            String[] permissions = new String[]{
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+            };
+            activity.requestPermissions(permissions, 1001);
             return 0;
         }
     }
@@ -177,7 +214,6 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
 
     private void dispatchEvent(final String message) {
         if (fListener == CoronaLua.REFNIL) return;
-
         CoronaEnvironment.getCoronaActivity()
                 .getRuntimeTaskDispatcher()
                 .send(runtime -> {
@@ -193,12 +229,8 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
                 });
     }
 
-    private void dispatchDeviceEvent(
-            final ExtendedBluetoothDevice device,
-            final String type) {
-
+    private void dispatchDeviceEvent(final ExtendedBluetoothDevice device, final String type) {
         if (fListener == CoronaLua.REFNIL) return;
-
         CoronaEnvironment.getCoronaActivity()
                 .getRuntimeTaskDispatcher()
                 .send(runtime -> {

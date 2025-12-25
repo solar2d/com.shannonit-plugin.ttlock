@@ -1,12 +1,12 @@
 local ttlock = require("plugin.ttlock")
 
--- Debug overlay text
+-- Debug overlay
 local debugText = display.newText({
     text = "TTLock Debug:\n",
     x = display.contentCenterX,
     y = 100,
-    width = display.contentWidth - 40,  -- keep inside screen
-    height = display.contentHeight - 200, -- fit vertically
+    width = display.contentWidth - 40,
+    height = display.contentHeight - 200,
     font = native.systemFont,
     fontSize = 16,
     align = "left"
@@ -17,7 +17,7 @@ debugText.anchorY = 0
 -- Function to log debug messages
 local function logDebug(msg)
     debugText.text = debugText.text .. "\n" .. msg
-    print(msg)  -- also log to console
+    print(msg)
 end
 
 -- TTLock event listener
@@ -29,12 +29,17 @@ local function ttlockListener(event)
 
     if event.type == "found" then
         logDebug("Device found: " .. event.name .. " (" .. event.mac .. ")")
+    elseif event.type == "lock_initialized" then
+        logDebug("Lock initialized successfully")
+    elseif event.type then
+        logDebug("Event: " .. tostring(event.type))
     end
 end
 
+-- Initialize TTLock plugin
 ttlock.init(ttlockListener)
 
--- BLE initialization function with retry
+-- BLE initialization with permissions check (Android 12+)
 local function startBLE()
     local isOn = ttlock.isBLEEnabled()
     logDebug("Bluetooth enabled: " .. tostring(isOn))
@@ -42,7 +47,6 @@ local function startBLE()
     if not isOn then
         logDebug("Requesting Bluetooth enable...")
         ttlock.requestBleEnable()
-        -- Retry after 2 seconds
         timer.performWithDelay(2000, startBLE)
         return
     end
@@ -51,40 +55,42 @@ local function startBLE()
     local success, err = pcall(function()
         ttlock.startBleService()
     end)
-
     if not success then
         logDebug("Error starting BLE service: " .. tostring(err))
-        -- Retry after 3 seconds
         timer.performWithDelay(3000, startBLE)
         return
     end
 
-    -- Start scanning after 2 seconds
-    timer.performWithDelay(2000, function()
+    -- Start scanning after service started
+    timer.performWithDelay(1000, function()
         logDebug("Starting TTLock scan...")
         ttlock.startBTDeviceScan()
     end)
 
-    -- Stop scan after 10 seconds
-    timer.performWithDelay(12000, function()
+    -- Stop scanning after 10 seconds
+    timer.performWithDelay(11000, function()
         logDebug("Stopping scan...")
         ttlock.stopBTDeviceScan()
     end)
 
-    -- Initialize lock after 14 seconds
-    timer.performWithDelay(14000, function()
+    -- Initialize lock after scanning
+    timer.performWithDelay(13000, function()
         logDebug("Initializing lock...")
         ttlock.lockInitialize()
     end)
 end
 
--- Request runtime permissions first (Android 12+)
-if ttlock.requestPermissions then
-    logDebug("Requesting runtime permissions...")
-    ttlock.requestPermissions()
-    -- Delay BLE start to give user time to grant permissions
-    timer.performWithDelay(2000, startBLE)
-else
-    -- No permissions wrapper, just start BLE (older Android)
-    startBLE()
+-- Request runtime permissions first
+local function requestPermissionsAndStart()
+    if ttlock.requestPermissions then
+        logDebug("Requesting runtime permissions...")
+        ttlock.requestPermissions()
+        -- Give user 2 seconds to grant permissions
+        timer.performWithDelay(2000, startBLE)
+    else
+        startBLE()
+    end
 end
+
+-- Start BLE flow
+requestPermissionsAndStart()
