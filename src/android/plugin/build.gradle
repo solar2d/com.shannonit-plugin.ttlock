@@ -14,11 +14,30 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
+    buildTypes {
+        debug {
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled false
+            shrinkResources false
+            zipAlignEnabled false
+        }
+        release {
+            minifyEnabled false
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    buildFeatures {
+        dataBinding true
+        viewBinding true
+        buildConfig true
+        prefab true
+    }
 
     compileOptions {
         targetCompatibility JavaVersion.VERSION_1_8
         sourceCompatibility JavaVersion.VERSION_1_8
-        // compilerArgs << "-Xlint:deprecation"
     }
     lintOptions {
         abortOnError false
@@ -32,22 +51,27 @@ android {
             dirs 'libs'
         }
     }
+    
 }
+
 
 
 dependencies {
     //implementation fileTree(include: ['*.aar'], dir: 'libs')
     //implementation(name: 'ttlock-sdk-2.0.0', ext: 'aar')
     implementation(name: 'Corona', ext: 'aar')
-    implementation(name:'ttlock-3.5.4', ext:'aar') {
+    api(name:'ttlock-3.5.4', ext:'aar') {
         transitive = true
+    }
+    implementation files(layout.buildDirectory.dir('classes')) {
+        builtBy 'compile'
     }
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 //    testImplementation 'junit:junit:4.12'
-//    implementation(name: 'ttlock-release-3.0.7', ext: 'aar')
+//  implementation(name: 'ttlock-release-3.0.7', ext: 'aar')
     implementation 'no.nordicsemi.android:dfu:2.5.0'
 //    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
 //    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
@@ -55,6 +79,7 @@ dependencies {
     // implementation 'com.ttlock:ttlock:3.5.4'
     implementation 'com.squareup.retrofit2:retrofit:2.4.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.4.0'
+    
 }
 
 import org.gradle.api.tasks.bundling.Tar
@@ -73,6 +98,22 @@ def tgzOutputDir = file("$buildDir/outputs/pluginPackage")                   // 
 
 
 def ttlockClassesDir = file("$projectDir/../../android/plugin/package-plugin/ttlock_classes")
+
+
+tasks.register('compile') {
+    doLast {
+        println 'compiling classes'
+    }
+}
+
+tasks.register('list') {
+    FileCollection compileClasspath = configurations.compileClasspath
+    dependsOn compileClasspath
+    doLast {
+        println "classpath = ${compileClasspath.collect { File file -> file.name }}"
+    }
+}
+
 
 tasks.register("mergeTTLockClasses") {
     dependsOn "assembleRelease"

@@ -1,7 +1,6 @@
 package plugin.ttlock;
 
 import android.app.Activity;
-import android.Manifest;
 
 import com.ansca.corona.*;
 import com.naef.jnlua.*;
@@ -25,30 +24,24 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     }
 
     public int init(LuaState L) {
-    int listenerIndex = 1;
+        int listenerIndex = 1;
         if (CoronaLua.isListener(L, listenerIndex, EVENT_NAME)) {
             fListener = CoronaLua.newRef(L, listenerIndex);
         }
         return 0;
     }
 
-
     @Override
     public int invoke(LuaState L) {
         NamedJavaFunction[] luaFunctions = new NamedJavaFunction[]{
-                new InitWrapper(),  
+                new InitWrapper(),
                 new IsBLEEnabledWrapper(),
                 new RequestBleEnableWrapper(),
                 new StartBleServiceWrapper(),
                 new StopBleServiceWrapper(),
                 new StartScanWrapper(),
                 new StopScanWrapper(),
-                new ConnectLockWrapper(),
-                new LockInitWrapper(),
-                new ResetLockWrapper(),
-                new ResetEKeyWrapper(),
-                new UnlockByUserWrapper(),
-                 new RequestPermissionsWrapper()  
+                new LockInitWrapper()
         };
         L.register(L.toString(1), luaFunctions);
         return 1;
@@ -61,43 +54,28 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
 
     @Override
     public void onExiting(CoronaRuntime runtime) {
+        ttlockUtils.stopBleService();
         CoronaLua.deleteRef(runtime.getLuaState(), fListener);
         fListener = CoronaLua.REFNIL;
-    }
-
-
-    private class RequestPermissionsWrapper implements NamedJavaFunction {
-        @Override
-        public String getName() { return "requestPermissions"; }
-
-        @Override
-        public int invoke(LuaState L) {
-            Activity activity = CoronaEnvironment.getCoronaActivity();
-
-            String[] permissions = new String[]{
-                android.Manifest.permission.BLUETOOTH_SCAN,
-                android.Manifest.permission.BLUETOOTH_CONNECT,
-                android.Manifest.permission.ACCESS_FINE_LOCATION
-            };
-
-            activity.requestPermissions(permissions, 1001);
-            return 0;
-        }
     }
 
     // ----------------------------
     // Lua Wrappers
     // ----------------------------
+
     private class InitWrapper implements NamedJavaFunction {
-    @Override public String getName() { return "init"; }
+        @Override public String getName() { return "init"; }
         @Override public int invoke(LuaState L) { return init(L); }
     }
 
     private class IsBLEEnabledWrapper implements NamedJavaFunction {
         @Override public String getName() { return "isBLEEnabled"; }
         @Override public int invoke(LuaState L) {
-            L.pushBoolean(ttlockUtils.isBLEEnabled(
-                    CoronaEnvironment.getCoronaActivity()));
+            L.pushBoolean(
+                    ttlockUtils.isBLEEnabled(
+                            CoronaEnvironment.getCoronaActivity()
+                    )
+            );
             return 1;
         }
     }
@@ -106,7 +84,8 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         @Override public String getName() { return "requestBleEnable"; }
         @Override public int invoke(LuaState L) {
             ttlockUtils.requestBleEnable(
-                    CoronaEnvironment.getCoronaActivity());
+                    CoronaEnvironment.getCoronaActivity()
+            );
             return 0;
         }
     }
@@ -114,8 +93,12 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
     private class StartBleServiceWrapper implements NamedJavaFunction {
         @Override public String getName() { return "startBleService"; }
         @Override public int invoke(LuaState L) {
-            ttlockUtils.startBleService(
-                    CoronaEnvironment.getCoronaActivity());
+            Activity activity = CoronaEnvironment.getCoronaActivity();
+            if (activity != null) {
+                ttlockUtils.startBleService(
+                        activity.getApplicationContext()
+                );
+            }
             return 0;
         }
     }
@@ -135,7 +118,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             ttlockUtils.startBTDeviceScan(new ScanLockCallback() {
                 @Override
                 public void onScanLockSuccess(ExtendedBluetoothDevice device) {
-                    lastScannedDevice = device;  // Save the device
+                    lastScannedDevice = device;
                     dispatchDeviceEvent(device, "found");
                 }
 
@@ -144,6 +127,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
                     dispatchEvent(error.getErrorMsg());
                 }
             });
+
             return 0;
         }
     }
@@ -152,15 +136,6 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
         @Override public String getName() { return "stopBTDeviceScan"; }
         @Override public int invoke(LuaState L) {
             ttlockUtils.stopBTDeviceScan();
-            return 0;
-        }
-    }
-
-    private class ConnectLockWrapper implements NamedJavaFunction {
-        @Override public String getName() { return "connectLock"; }
-        @Override public int invoke(LuaState L) {
-            String lockData = L.checkString(1);
-            ttlockUtils.connectLock(lockData, null);
             return 0;
         }
     }
@@ -195,35 +170,6 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             return 0;
         }
     }
-    private class ResetLockWrapper implements NamedJavaFunction {
-        @Override public String getName() { return "resetLock"; }
-        @Override public int invoke(LuaState L) {
-            ttlockUtils.resetLock(
-                    L.checkString(1),
-                    L.checkString(2),
-                    null);
-            return 0;
-        }
-    }
-
-    private class ResetEKeyWrapper implements NamedJavaFunction {
-        @Override public String getName() { return "resetEKey"; }
-        @Override public int invoke(LuaState L) {
-            ttlockUtils.resetEKey(
-                    L.checkString(1),
-                    L.checkString(2),
-                    null);
-            return 0;
-        }
-    }
-
-    private class UnlockByUserWrapper implements NamedJavaFunction {
-        @Override public String getName() { return "unlockByUser"; }
-        @Override public int invoke(LuaState L) {
-            // SDK v3+ unlock is handled internally (no callback)
-            return 0;
-        }
-    }
 
     // ----------------------------
     // Event dispatch helpers
@@ -231,6 +177,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
 
     private void dispatchEvent(final String message) {
         if (fListener == CoronaLua.REFNIL) return;
+
         CoronaEnvironment.getCoronaActivity()
                 .getRuntimeTaskDispatcher()
                 .send(runtime -> {
@@ -243,7 +190,6 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-
                 });
     }
 
@@ -252,6 +198,7 @@ public class LuaLoader implements JavaFunction, CoronaRuntimeListener {
             final String type) {
 
         if (fListener == CoronaLua.REFNIL) return;
+
         CoronaEnvironment.getCoronaActivity()
                 .getRuntimeTaskDispatcher()
                 .send(runtime -> {

@@ -3,10 +3,6 @@ settings = {
         ["plugin.ttlock"] = {
             publisherId = "com.shannonit",
         },
-        ["plugin.permissions"] = {
-            publisherId = "com.coronalabs",
-            supportedPlatforms = { android=true }
-        }
     },
 
     android = {
