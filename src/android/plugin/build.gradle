@@ -42,10 +42,8 @@ android {
     lintOptions {
         abortOnError false
         checkReleaseBuilds false
-        // 防止在发布的时候出现因MissingTranslation导致Build Failed!
         disable 'MissingTranslation'
     }
-    //添加本地仓库，并把libs目录作为仓库地址
     repositories {
         flatDir {
             dirs 'libs'
